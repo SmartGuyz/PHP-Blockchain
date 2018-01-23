@@ -1,22 +1,17 @@
 <?php
 class cBlock
 {
-    public $iIndex, $sHash, $sPrevHash, $iTimestamp, $sData, $iNonce, $iDifficulty;
+    public $index, $hash, $prevHash, $timestamp, $data, $nonce, $difficulty;
     
-    public function __construct(int $iIndex, int $iTimestamp, string $sData, string $sPrevHash = null)
+    public function __construct(int $iIndex, string $sHash, string $sPrevHash, int $iTimestamp, string $sData, int $iDifficulty, int $iNonce)
     {
-        $this->iIndex       = (int)$iIndex;      
-        $this->sPrevHash    = (string)$sPrevHash;
-        $this->iTimestamp   = (int)$iTimestamp;
-        $this->sData        = (string)$sData;
-        $this->iDifficulty  = 0;
-        $this->iNonce       = 0;
-        $this->sHash        = (string)$this->calculateHash();
-    }
-    
-    final private function calculateHash()
-    {
-        return hash("sha256", $this->iIndex.$this->sPrevHash.$this->iTimestamp.((string)$this->sData).$this->iDifficulty.$this->iNonce);
+        $this->index       = (int)$iIndex;
+        $this->hash        = (string)$sHash;
+        $this->prevHash    = (string)$sPrevHash;
+        $this->timestamp   = (int)$iTimestamp;
+        $this->data        = (string)$sData;
+        $this->difficulty  = (int)$iDifficulty;
+        $this->nonce       = (int)$iNonce;  
     }
 }
 ?>

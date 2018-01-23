@@ -2,7 +2,7 @@
 class cHttpServer
 {
     protected $aClients, $aClientsInfo, $aRead, $aConfig, $rMasterSocket;
-    private $iMaxClients, $iMaxRead;
+    private $iMaxClients, $iMaxRead, $cBlockchain;
     
     final public function __construct()
     {
@@ -14,6 +14,8 @@ class cHttpServer
         
         $this->iMaxClients      = 1024;
         $this->iMaxRead         = 1024;
+        
+        $this->cBlockchain      = new cBlockchain();
                
         if(($this->rMasterSocket = @socket_create(AF_INET, SOCK_STREAM, 0)) === false)
         {
@@ -113,7 +115,59 @@ class cHttpServer
                     socket_getpeername($rClient, $sClientIP, $sClientPort);
                     
                     self::debug("\n[{$sClientIP}:{$sClientPort}] >> {$sBuffer}");
+
+                    $aIncoming = explode("\r\n", $sBuffer);
+                    $aFetchArray = explode(" ", $aIncoming[0]);
                     
+                    // Get page and method
+                    preg_match('~.+?(?=\sHTTP\/1\.1)~is', $aIncoming[0], $aMatches);
+                    list($sMethod, $sPage) = explode(" ", $aMatches[0]);
+                    
+                    switch($sMethod)
+                    {
+                        case 'GET':
+                            $aArguments = explode("/", $sPage);
+                            unset($aArguments[0]); // Always empty
+                            
+                            if(count($aArguments) > 0)
+                            {
+                                switch($aArguments[1])
+                                {
+                                    case 'blocks':      // Return all blocks of the chain
+                                        $this->send($rClient, $this->cBlockchain->getBlockchain(), $iKey);
+                                        break;
+                                    case 'block':       // Return only the requested block (hash)
+                                        if(!isset($aArguments[2]) OR strlen($aArguments[2]) <> 64)
+                                        {
+                                            $this->send($rClient, ['error' => 'Block hash invalid'], $iKey, "400 Bad Request");
+                                        }
+                                        else 
+                                        {
+                                            $iChainKey = array_search($aArguments[2], array_column($this->cBlockchain->getBlockchain(), 'hash'));
+                                            if($iChainKey !== false)
+                                            {
+                                                $this->send($rClient, $this->cBlockchain->getBlockchain()[$iChainKey], $iKey);
+                                            }
+                                            else
+                                            {
+                                                $this->send($rClient, ['error' => 'Block hash not found'], $iKey, "404 Not found");
+                                            }
+                                        }
+                                        break;
+                                }
+                            }
+                            else
+                            {
+                                $this->send($rClient, ['error' => 'Method not found'], $iKey, "400 Bad Request");
+                            }
+                            break;
+                        case 'POST':
+                            break;
+                        default:
+                            $this->send($rClient, ['error' => 'Method not found'], $iKey, "400 Bad Request");
+                            break;
+                    }
+
                     unset($aTempData);
                 }
             }
@@ -125,10 +179,20 @@ class cHttpServer
         echo "{$sData}".PHP_EOL;
     }
 
-    final private function send($rSocket, $sData, $iKey)
+    final private function send($rSocket, $aData, $iKey, $sHttpCode = "200 OK")
     {
+        $sHeader = "HTTP/1.1 {$sHttpCode}\r\n";
+        $sHeader .= "Date: Fri, 31 Dec 1999 23:59:59 GMT\r\n";
+        $sHeader .= "Server: PHPBC/1.0\r\n";
+        $sHeader .= "X-Powered-By: PHP/".phpversion()."\r\n";
+        $sHeader .= "Content-Type: application/json; charset=utf-8\r\n\r\n";
+        
+        $sData = $sHeader.json_encode($aData, JSON_PRETTY_PRINT);
+        
         socket_send($rSocket, $sData, strlen($sData), MSG_EOF);
         self::debug("[{$this->aClientsInfo[$iKey]['ipaddr']}:{$this->aClientsInfo[$iKey]['port']}] << {$sData}");
+        
+        $this->closeConnection($iKey);
     }
 
     final private function closeConnection($iKey)

@@ -9,6 +9,6 @@ ini_set('zlib.output_compression', false);
 ini_set('implicit_flush', true);
 ob_implicit_flush(true);
 
-require 'cHttpServer.class.php';
+require 'include/Loader.php';
 (new cHttpServer())->run();
 ?>
