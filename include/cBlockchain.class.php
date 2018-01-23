@@ -35,7 +35,7 @@ class cBlockchain
     
     private function calculateHashForBlock(cBlock $oBlock): string
     {
-        return hash("sha256", $oBlock->iIndex.$oBlock->sPrevHash.$oBlock->iTimestamp.((string)$oBlock->sData).$oBlock->iDifficulty.$oBlock->iNonce);
+        return hash("sha256", $oBlock->index.$oBlock->prevHash.$oBlock->timestamp.$oBlock->data.$oBlock->difficulty.$oBlock->nonce);
     }
     
     private function isValidBlockStructure(cBlock $oBlock): bool
@@ -69,15 +69,15 @@ class cBlockchain
         {
             return false;
         }
-        elseif(($oPrevBlock->iIndex + 1) !== $oNewBlock->iIndex)
+        elseif(($oPrevBlock->index + 1) !== $oNewBlock->index)
         {
             return false;
         }
-        elseif($oPrevBlock->sHash !== $oNewBlock->sPrevHash)
+        elseif($oPrevBlock->hash !== $oNewBlock->prevHash)
         {
             return false;
         }
-        elseif($this->calculateHashForBlock($oNewBlock) !== $oNewBlock->sHash)
+        elseif($this->calculateHashForBlock($oNewBlock) !== $oNewBlock->hash)
         {
             return false;
         }
@@ -126,7 +126,7 @@ class cBlockchain
     {
         if($this->isValidNewBlock($oNewBlock, $this->getLastBlock()))
         {
-            $this->aChain = [$oNewBlock];
+            array_push($this->aChain, $oNewBlock);
         }
     }
 }

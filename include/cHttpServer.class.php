@@ -162,6 +162,23 @@ class cHttpServer
                             }
                             break;
                         case 'POST':
+                            $aArguments = explode("/", $sPage);
+                            unset($aArguments[0]); // Always empty
+                            
+                            if(count($aArguments) > 0)
+                            {
+                                switch($aArguments[1])
+                                {
+                                    case 'mineBlock':
+                                        $oNewBlock = $this->cBlockchain->generateNextBlock("Test block"); // TODO: Post data afvangen
+                                        $this->send($rClient, $oNewBlock, $iKey);
+                                        break;
+                                }
+                            }
+                            else
+                            {
+                                $this->send($rClient, ['error' => 'Method not found'], $iKey, "400 Bad Request");
+                            }
                             break;
                         default:
                             $this->send($rClient, ['error' => 'Method not found'], $iKey, "400 Bad Request");

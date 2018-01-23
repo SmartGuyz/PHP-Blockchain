@@ -1,4 +1,14 @@
 <?php
-require_once 'include/Loader.php';
+$rCurl = curl_init();
 
-print_r($cBlockchain->getLastBlock());
+curl_setopt($rCurl, CURLOPT_URL,"http://phpbc.sourcexs.nl:3001/mineBlock");
+curl_setopt($rCurl, CURLOPT_POST, true);
+curl_setopt($rCurl, CURLOPT_POSTFIELDS, "data=test");
+curl_setopt($rCurl, CURLOPT_RETURNTRANSFER, true);
+
+$sOutput = curl_exec($rCurl);
+
+print_r($sOutput);
+
+curl_close ($rCurl);
+?>
