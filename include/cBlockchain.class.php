@@ -222,7 +222,7 @@ class cBlockchain
         {
             return false;
         }
-        elseif($this->calculateHashForBlock($oNewBlock) !== $oNewBlock->hash)
+        elseif(!$this->hasValidHash($oNewBlock))
         {
             return false;
         }
@@ -272,7 +272,7 @@ class cBlockchain
      */
     private function isValidTimestamp(cBlock $oNewBlock, cBlock $oPrevBlock): bool
     {
-        return ($oPrevBlock->timestamp - 60 < $oNewBlock->timestamp) && $oNewBlock->timestamp - 60 < $this->getCurrentTimestamp();
+        return (((($oPrevBlock->timestamp - 60) < $oNewBlock->timestamp) && ($oNewBlock->timestamp - 60) < $this->getCurrentTimestamp()) ? true : false);
     }
 
     private function getCurrentTimestamp()
@@ -288,6 +288,11 @@ class cBlockchain
      */
     private function hasValidHash(cBlock $oBlock): bool
     {
+        if(!$this->hashMatchesBlockContent($oBlock)) 
+        {
+            return false;
+        }
+        
         if(!$this->hashMatchesDifficulty($oBlock->hash, $oBlock->difficulty))
         {
             // TODO: log
@@ -304,7 +309,7 @@ class cBlockchain
     private function hashMatchesBlockContent(cBlock $oBlock): bool
     {
         $sHash = $this->calculateHashForBlock($oBlock);
-        return $sHash === $oBlock->hash;
+        return (($sHash === $oBlock->hash) ? true : false);
     }
     
     /**
@@ -338,7 +343,7 @@ class cBlockchain
         $iNextTimestamp = $this->getCurrentTimestamp();
         $oNewBlock = $this->findBlock($iNextIndex, $oPrevBlock->hash, $iNextTimestamp, $sBlockData, $iNextDifficulty);
         
-        $this->addBlock($oNewBlock);
+        $this->addBlockToChain($oNewBlock);
         
         // TODO: Broadcast latest
         
@@ -350,7 +355,7 @@ class cBlockchain
      * 
      * @param cBlock $oNewBlock
      */
-    private function addBlock(cBlock $oNewBlock): void
+    private function addBlockToChain(cBlock $oNewBlock): void
     {
         if($this->isValidNewBlock($oNewBlock, $this->getLastBlock()) === true)
         {

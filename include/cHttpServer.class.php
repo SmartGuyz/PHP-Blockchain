@@ -1,12 +1,13 @@
 <?php
 class cHttpServer
 {
+    use tSocketServer;
+    
     protected $aClients, $aClientsInfo, $aRead, $aConfig, $rMasterSocket;
-    private $iMaxClients, $iMaxRead, $cBlockchain;
+    private $iMaxClients, $iMaxRead, $cBlockchain, $cSwitchBoard;
     
     public function __construct()
     {
-        //register_shutdown_function('abort');
         $this->aClients         = [];
         $this->aClientsInfo     = [];
         $this->aConfig["ip"]    = "0.0.0.0";
@@ -15,50 +16,13 @@ class cHttpServer
         $this->iMaxClients      = 1024;
         $this->iMaxRead         = 1024;
         
-        $this->cBlockchain      = new cBlockchain();
-               
-        if(($this->rMasterSocket = @socket_create(AF_INET, SOCK_STREAM, 0)) === false)
-        {
-            return "socket_create() failed: reason: ".socket_strerror(socket_last_error());
-        }
-        else
-        {
-            self::debug("* Socket created!");
-        }
-        
-        if(@socket_set_option($this->rMasterSocket, SOL_SOCKET, SO_REUSEADDR, 1) === false)
-        {
-            return "socket_set_option() failed: reason: ".socket_strerror(socket_last_error($this->rMasterSocket));
-        }
-        else
-        {
-            self::debug("* Set option SO_REUSEADDR!");
-        }
-        
-        if(@socket_bind($this->rMasterSocket, $this->aConfig["ip"], $this->aConfig["port"]) === false)
-        {
-            return "socket_bind() failed: reason: ".socket_strerror(socket_last_error($this->rMasterSocket));
-        }
-        else
-        {
-            self::debug("* Socket bind to {$this->aConfig["ip"]}:{$this->aConfig["port"]}!");
-        }
-        
-        if(@socket_listen($this->rMasterSocket) === false)
-        {
-            return "socket_listen() failed: reason: ".socket_strerror(socket_last_error($this->rMasterSocket));
-            exit;
-        }
-        else
-        {
-            self::debug("* Socket is now listening, waiting for clients to connect...".PHP_EOL);
-        }
-        
-        return;
+        $this->createSocket();
     }
     
-    public function run()
+    public function run(cBlockchain $oBlockchain)
     {
+        $this->cBlockchain = $oBlockchain;
+        
         while(true)
         {
             $this->aRead = [];
@@ -116,21 +80,35 @@ class cHttpServer
                     
                     self::debug("\n[{$sClientIP}:{$sClientPort}] >> {$sBuffer}");
 
+                    // Make array of lines
                     $aIncoming = explode("\r\n", $sBuffer);
-                    $aFetchArray = explode(" ", $aIncoming[0]);
+                    
+                    // Extract body from headers
+                    $bJson = false;
+                    $aBody = explode("\r\n\r\n", $sBuffer);
+                    print_r($aBody);
+                    $sBody = ((isset($aBody[1])) ? $aBody[1] : "");
+                    if(@json_decode(trim($sBody)))
+                    {
+                        $bJson = true;
+                        $oBody = json_decode(trim($sBody));
+                    }
                     
                     // Get page and method
                     preg_match('~.+?(?=\sHTTP\/1\.1)~is', $aIncoming[0], $aMatches);
                     list($sMethod, $sPage) = explode(" ", $aMatches[0]);
                     
-                    switch($sMethod)
+                    // Explode arguments
+                    $aArguments = explode("/", $sPage);
+                    unset($aArguments[0]); // Always empty
+                    
+                    // check if we have any arguments (pages)
+                    if(count($aArguments) > 0)
                     {
-                        case 'GET':
-                            $aArguments = explode("/", $sPage);
-                            unset($aArguments[0]); // Always empty
-                            
-                            if(count($aArguments) > 0)
-                            {
+                        // POST or GET?
+                        switch($sMethod)
+                        {
+                            case 'GET':
                                 switch($aArguments[1])
                                 {
                                     case 'blocks':      // Return all blocks of the chain
@@ -154,71 +132,45 @@ class cHttpServer
                                             }
                                         }
                                         break;
-                                }
-                            }
-                            else
-                            {
-                                $this->send($rClient, ['error' => 'Method not found'], $iKey, "400 Bad Request");
-                            }
-                            break;
-                        case 'POST':
-                            $aArguments = explode("/", $sPage);
-                            unset($aArguments[0]); // Always empty
-                            
-                            if(count($aArguments) > 0)
-                            {
-                                switch($aArguments[1])
-                                {
-                                    case 'mineBlock':
-                                        $oNewBlock = $this->cBlockchain->generateNextBlock("Test block"); // TODO: Post data afvangen
-                                        $this->send($rClient, $oNewBlock, $iKey);
+                                    default:
+                                        $this->send($rClient, ['error' => 'Argument not found'], $iKey, "404 Not found");
                                         break;
+                                    }
+                                break;
+                            case 'POST':
+                                $aArguments = explode("/", $sPage);
+                                unset($aArguments[0]); // Always empty
+                                
+                                if(count($aArguments) > 0)
+                                {
+                                    switch($aArguments[1])
+                                    {
+                                        case 'mineBlock':
+                                            $oNewBlock = $this->cBlockchain->generateNextBlock((string)$oBody->data); // TODO: Post data afvangen
+                                            $this->send($rClient, $oNewBlock, $iKey);
+                                            break;
+                                        default:
+                                            $this->send($rClient, ['error' => 'Argument not found'], $iKey, "404 Not found");
+                                            break;
+                                    }
                                 }
-                            }
-                            else
-                            {
-                                $this->send($rClient, ['error' => 'Method not found'], $iKey, "400 Bad Request");
-                            }
-                            break;
-                        default:
-                            $this->send($rClient, ['error' => 'Method not found'], $iKey, "400 Bad Request");
-                            break;
+                                else
+                                {
+                                    $this->send($rClient, ['error' => 'Argument not found'], $iKey, "400 Bad Request");
+                                }
+                                break;
+                            default:
+                                $this->send($rClient, ['error' => 'Method not found'], $iKey, "404 Not found");
+                                break;
+                        }
                     }
-
-                    unset($aTempData);
+                    else
+                    {
+                        $this->send($rClient, ['error' => 'Argument not found'], $iKey, "404 Not found");
+                    }
                 }
             }
         }
-    }
-
-    private static function debug($sData)
-    {
-        echo "{$sData}".PHP_EOL;
-    }
-
-    private function send($rSocket, $aData, $iKey, $sHttpCode = "200 OK")
-    {
-        $sHeader = "HTTP/1.1 {$sHttpCode}\r\n";
-        $sHeader .= "Date: Fri, 31 Dec 1999 23:59:59 GMT\r\n";
-        $sHeader .= "Server: PHPBC/1.0\r\n";
-        $sHeader .= "X-Powered-By: PHP/".phpversion()."\r\n";
-        $sHeader .= "Content-Type: application/json; charset=utf-8\r\n\r\n";
-        
-        $sData = $sHeader.json_encode($aData, JSON_PRETTY_PRINT);
-        
-        socket_send($rSocket, $sData, strlen($sData), MSG_EOF);
-        self::debug("[{$this->aClientsInfo[$iKey]['ipaddr']}:{$this->aClientsInfo[$iKey]['port']}] << {$sData}");
-        
-        $this->closeConnection($iKey);
-    }
-
-    private function closeConnection($iKey)
-    {
-        self::debug("* Disconnected client {$this->aClientsInfo[$iKey]['ipaddr']}...");
-
-        @socket_close($this->aClients[$iKey]);
-        unset($this->aClients[$iKey]);
-        unset($this->aClientsInfo[$iKey]);
     }
 }
 ?>

@@ -5,6 +5,29 @@ if(!ini_get('display_errors'))
     ini_set('display_errors', true);
 }
 
+$sName = "PHPBC Node";
+$sPath = "/home/admin/smartping/rrd/";
+$sLockFile = "/tmp/".strtolower($sName).".pid.lock";
+
+// HTTP server
+$aCmd[0]['name'] 	= "cHttpServer";
+$aCmd[0]['ip'] 	    = "0.0.0.0";
+$aCmd[0]['port'] 	= 3001;
+
+// P2P server
+$aCmd[1]['name'] 	= "cP2PServer";
+$aCmd[1]['ip'] 	    = "0.0.0.0";
+$aCmd[1]['port'] 	= 6001;
+
+$aCommands[] = "start";
+$aCommands[] = "stop";
+$aCommands[] = "status";
+
+if(!function_exists('pcntl_fork'))
+{
+    die(" * PCNTL functions are not available on this PHP installation, {$sName} won't run without PCNTL!\n");
+}
+
 setlocale(LC_TIME, "nl_NL");
 date_default_timezone_set("Europe/Amsterdam");
 
