@@ -4,7 +4,7 @@ class cHttpServer
     protected $aClients, $aClientsInfo, $aRead, $aConfig, $rMasterSocket;
     private $iMaxClients, $iMaxRead, $cBlockchain;
     
-    final public function __construct()
+    public function __construct()
     {
         //register_shutdown_function('abort');
         $this->aClients         = [];
@@ -57,7 +57,7 @@ class cHttpServer
         return;
     }
     
-    final public function run()
+    public function run()
     {
         while(true)
         {
@@ -191,12 +191,12 @@ class cHttpServer
         }
     }
 
-    final private static function debug($sData)
+    private static function debug($sData)
     {
         echo "{$sData}".PHP_EOL;
     }
 
-    final private function send($rSocket, $aData, $iKey, $sHttpCode = "200 OK")
+    private function send($rSocket, $aData, $iKey, $sHttpCode = "200 OK")
     {
         $sHeader = "HTTP/1.1 {$sHttpCode}\r\n";
         $sHeader .= "Date: Fri, 31 Dec 1999 23:59:59 GMT\r\n";
@@ -212,7 +212,7 @@ class cHttpServer
         $this->closeConnection($iKey);
     }
 
-    final private function closeConnection($iKey)
+    private function closeConnection($iKey)
     {
         self::debug("* Disconnected client {$this->aClientsInfo[$iKey]['ipaddr']}...");
 

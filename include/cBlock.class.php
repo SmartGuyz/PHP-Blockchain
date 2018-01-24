@@ -1,4 +1,8 @@
 <?php
+/**
+ * Object for each block. this object will be added to the chain
+ *
+ */
 class cBlock
 {
     public $index, $hash, $prevHash, $timestamp, $data, $nonce, $difficulty;
