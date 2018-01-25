@@ -8,21 +8,6 @@ if(!ini_get('display_errors'))
 $sName = "PHPBC Node";
 $sLockFile = "/tmp/".strtolower($sName).".pid.lock";
 
-// HTTP server
-$aCmd[0]['name'] 	= "cHttpServer";
-$aCmd[0]['ip'] 	    = "0.0.0.0";
-$aCmd[0]['port'] 	= 3001;
-
-// P2P server
-$aCmd[1]['name'] 	= "cP2PServer";
-$aCmd[1]['ip'] 	    = "0.0.0.0";
-$aCmd[1]['port'] 	= 6001;
-
-// Start commands
-$aCommands[] = "start";
-$aCommands[] = "stop";
-$aCommands[] = "status";
-
 if(!function_exists('pcntl_fork'))
 {
     die(" * PCNTL functions are not available on this PHP installation, {$sName} won't run without PCNTL!\n");
@@ -41,7 +26,27 @@ if(file_exists($sConfig))
     
     if(!isset($aIniValues['database']['datafile_blockchain']))
     {
-        die("The ini file is corrupt, variable \"sqlite_datafile\" is missing");
+        die("The ini file is corrupt, variable \"datafile_blockchain\" is missing in \"database\"");
+    }
+    elseif(!isset($aIniValues['database']['datafile_peers']))
+    {
+        die("The ini file is corrupt, variable \"datafile_peers\" is missing in \"database\"");
+    }
+    elseif(!isset($aIniValues['http-server']['remote_address']))
+    {
+        die("The ini file is corrupt, variable \"remote_address\" is missing in \"http-server\"");
+    }
+    elseif(!isset($aIniValues['http-server']['remote_port']))
+    {
+        die("The ini file is corrupt, variable \"remote_port\" is missing in \"http-server\"");
+    }
+    elseif(!isset($aIniValues['p2p-server']['remote_address']))
+    {
+        die("The ini file is corrupt, variable \"remote_address\" is missing in \"p2p-server\"");
+    }
+    elseif(!isset($aIniValues['p2p-server']['remote_port']))
+    {
+        die("The ini file is corrupt, variable \"remote_port\" is missing in \"p2p-server\"");
     }
 }
 else
@@ -89,11 +94,14 @@ function default_autoloader($sClassName)
 
 spl_autoload_register('default_autoloader');
 
-// Open/Create SQLite DB
-$cSQLite = new SQLite3($aIniValues['database']['datafile_blockchain']);
+// Open/Create SQLite DB for the blockchain
+$cSQLiteBC = new SQLite3($aIniValues['database']['datafile_blockchain']);
+
+// Open/Create SQLite DB for the peers
+$cSQLitePeers = new SQLite3($aIniValues['database']['datafile_peers']);
 
 // Check tables
-$oSqlBC = $cSQLite->query("SELECT `name` FROM `sqlite_master` WHERE `type` = 'table' AND `name` = 'blockchain'");
+$oSqlBC = $cSQLiteBC->query("SELECT `name` FROM `sqlite_master` WHERE `type` = 'table' AND `name` = 'blockchain'");
 if(!$oSqlBC->fetchArray())
 {
     $sQuery = "CREATE TABLE `blockchain` (";
@@ -106,13 +114,13 @@ if(!$oSqlBC->fetchArray())
     $sQuery .= "`nonce` INTEGER NOT NULL";
     $sQuery .= ")";
     
-    if(!$cSQLite->exec($sQuery))
+    if(!$cSQLiteBC->exec($sQuery))
     {
         die("Database table 'blockchain' can not be created!");
     }
 }
 
-$oSqlP2P = $cSQLite->query("SELECT `name` FROM `sqlite_master` WHERE `type` = 'table' AND `name` = 'peers'");
+$oSqlP2P = $cSQLitePeers->query("SELECT `name` FROM `sqlite_master` WHERE `type` = 'table' AND `name` = 'peers'");
 if(!$oSqlP2P->fetchArray())
 {
     $sQuery = "CREATE TABLE `peers` (";
@@ -121,6 +129,21 @@ if(!$oSqlP2P->fetchArray())
     $sQuery .= "`remote_port` INTEGER NOT NULL";
     $sQuery .= ")";
     
-    $cSQLite->exec($sQuery);
+    $cSQLitePeers->exec($sQuery);
 }
+
+// HTTP server
+$aCmd[0]['name'] 	= "cHttpServer";
+$aCmd[0]['ip'] 	    = $aIniValues['http-server']['remote_address'];
+$aCmd[0]['port'] 	= $aIniValues['http-server']['remote_port'];
+
+// P2P server
+$aCmd[1]['name'] 	= "cP2PServer";
+$aCmd[1]['ip'] 	    = $aIniValues['p2p-server']['remote_address'];
+$aCmd[1]['port'] 	= $aIniValues['p2p-server']['remote_port'];
+
+// Start commands
+$aCommands[] = "start";
+$aCommands[] = "stop";
+$aCommands[] = "status";
 ?>

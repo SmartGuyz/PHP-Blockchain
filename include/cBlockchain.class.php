@@ -3,7 +3,7 @@ class cBlockchain
 {
     use tUtils;
     
-    private $aChain, $oGenesisBlock, $cSQLite;
+    private $aChain, $oGenesisBlock, $cSQLiteBC, $cSQLitePeers;
     
     const BLOCK_GENERATION_INTERVAL = 10; // Seconden
     const DIFFICULTY_ADJUSTMENT_INTERVAL = 10; // Blocks
@@ -11,9 +11,10 @@ class cBlockchain
     /**
      * Adding genesis block to the chain
      */
-    public function __construct($oSQLite)
+    public function __construct(SQLite3 $oSQLiteBC, SQLite3 $oSQLitePeers)
     {
-        $this->cSQLite = $oSQLite;
+        $this->cSQLiteBC = $oSQLiteBC;
+        $this->cSQLitePeers = $oSQLitePeers;
         
         // Generate genesis block
         $this->oGenesisBlock = $this->createGenesisBlock();
@@ -34,7 +35,7 @@ class cBlockchain
     
     private function loadBlockchain()
     {       
-        $oSqlChain = $this->cSQLite->query("SELECT * FROM `blockchain` ORDER BY `index`");
+        $oSqlChain = $this->cSQLiteBC->query("SELECT * FROM `blockchain` ORDER BY `index`");
         $aSqlChain = $oSqlChain->fetchArray();
         if($aSqlChain !== false)
         {
@@ -68,10 +69,10 @@ class cBlockchain
     
     private function addBlockToDatabase(cBlock $oBlock)
     {
-        $oSqlCheck = $this->cSQLite->query("SELECT * FROM `blockchain` WHERE `index` = '{$oBlock->index}'");
+        $oSqlCheck = $this->cSQLiteBC->query("SELECT * FROM `blockchain` WHERE `index` = '{$oBlock->index}'");
         if(!$oSqlCheck->fetchArray())
         {
-            $bCheck = $this->cSQLite->exec("INSERT INTO `blockchain` (`index`, `hash`, `prevHash`, `timestamp`, `data`, `difficulty`, `nonce`) VALUES ('{$oBlock->index}', '{$oBlock->hash}', '{$oBlock->prevHash}', '{$oBlock->timestamp}', '{$oBlock->data}', '{$oBlock->difficulty}', '{$oBlock->nonce}')");
+            $bCheck = $this->cSQLiteBC->exec("INSERT INTO `blockchain` (`index`, `hash`, `prevHash`, `timestamp`, `data`, `difficulty`, `nonce`) VALUES ('{$oBlock->index}', '{$oBlock->hash}', '{$oBlock->prevHash}', '{$oBlock->timestamp}', '{$oBlock->data}', '{$oBlock->difficulty}', '{$oBlock->nonce}')");
             if($bCheck)
             {
                 self::debug("Block added to the chain (DB)");

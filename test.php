@@ -1,5 +1,5 @@
 <?php
-$aPostFiels['data'] = "Andre Gerritsen";
+$aPostFiels['data'] = ((isset($argv[1])) ? $argv[1] : "Default data zonder argument");
 
 $rCurl = curl_init();
 

@@ -16,16 +16,16 @@ if(!isset($_SERVER['argv'][1]) OR !in_array($_SERVER['argv'][1], $aCommands))
     die(" * Usage: ./{$sName} {start|stop|status}\n");
 }
 elseif($_SERVER['argv'][1] == "start")
-{
-    // Load and start blockchain
-    $cBlockchain = new cBlockchain($cSQLite);
-    
+{   
     if(file_exists($sLockFile))
     {
         die(" * {$sName} can't create pid-lock, the file exists at {$sLockFile}\n * It looks like {$sName} is allready running!\n");
     }
     else
     {
+        // Load and start blockchain
+        $cBlockchain = new cBlockchain($cSQLiteBC, $cSQLitePeers);
+        
         $aPid = [];
         for($i = 0; $i < count($aCmd); $i++)
         {
@@ -53,7 +53,7 @@ elseif($_SERVER['argv'][1] == "start")
                 fclose($rHandle);
 
                 // Start server
-                (new $aCmd[$i]['name']())->run($cBlockchain);
+                (new $aCmd[$i]['name']($aCmd[$i]['ip'], $aCmd[$i]['port']))->run($cBlockchain);
             }
         }
     }

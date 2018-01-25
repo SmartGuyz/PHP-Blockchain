@@ -6,12 +6,12 @@ class cP2PServer
     protected $aClients, $aClientsInfo, $aRead, $aConfig, $rMasterSocket;
     private $iMaxClients, $iMaxRead, $cBlockchain;
     
-    public function __construct()
+    public function __construct(string $sRemoteAddress, int $iRemotePort)
     {
         $this->aClients         = [];
         $this->aClientsInfo     = [];
-        $this->aConfig["ip"]    = "0.0.0.0";
-        $this->aConfig["port"]  = 6001;
+        $this->aConfig["ip"]    = $sRemoteAddress;
+        $this->aConfig["port"]  = $iRemotePort;
         
         $this->iMaxClients      = 1024;
         $this->iMaxRead         = 1024;

@@ -4,14 +4,14 @@ class cHttpServer
     use tSocketServer;
     
     protected $aClients, $aClientsInfo, $aRead, $aConfig, $rMasterSocket;
-    private $iMaxClients, $iMaxRead, $cBlockchain, $cSwitchBoard;
+    private $iMaxClients, $iMaxRead, $cBlockchain;
     
-    public function __construct()
+    public function __construct(string $sRemoteAddress, int $iRemotePort)
     {
         $this->aClients         = [];
         $this->aClientsInfo     = [];
-        $this->aConfig["ip"]    = "0.0.0.0";
-        $this->aConfig["port"]  = 3001;
+        $this->aConfig["ip"]    = $sRemoteAddress;
+        $this->aConfig["port"]  = $iRemotePort;
         
         $this->iMaxClients      = 1024;
         $this->iMaxRead         = 1024;
@@ -52,7 +52,7 @@ class cHttpServer
                     socket_set_option($rMsgSocket, SOL_SOCKET, SO_SNDTIMEO, ['sec' => 1, 'usec' => 0]);
                     
                     socket_getpeername($rMsgSocket, $sClientIP, $sClientPort);
-                    echo "* Incoming connection from {$sClientIP} on port {$sClientPort}\n";
+                    self::debug("* Incoming connection from {$sClientIP} on port {$sClientPort}");
                     
                     $this->aClients[] = $rMsgSocket;
                     $this->aClientsInfo[] = ['ipaddr' => $sClientIP, 'port' => $sClientPort];
