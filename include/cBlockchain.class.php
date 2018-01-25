@@ -1,7 +1,9 @@
 <?php
 class cBlockchain
 {
-    private $aChain, $oGenesisBlock;
+    use tUtils;
+    
+    private $aChain, $oGenesisBlock, $cSQLite;
     
     const BLOCK_GENERATION_INTERVAL = 10; // Seconden
     const DIFFICULTY_ADJUSTMENT_INTERVAL = 10; // Blocks
@@ -9,9 +11,76 @@ class cBlockchain
     /**
      * Adding genesis block to the chain
      */
-    public function __construct()
+    public function __construct($oSQLite)
     {
-        $this->aChain = [$this->createGenesisBlock()];
+        $this->cSQLite = $oSQLite;
+        
+        // Generate genesis block
+        $this->oGenesisBlock = $this->createGenesisBlock();
+        
+        self::debug("Starting blockchain...");
+        
+        $this->loadBlockchain();
+        if(empty($this->aChain) OR count($this->aChain) == 0)
+        {
+            self::debug("DB is empty, so we start a new chain!");
+            
+            $this->aChain = [$this->oGenesisBlock];
+            
+            // Add Genisis block to DB
+            $this->addBlockToDatabase($this->oGenesisBlock);
+        }
+    }
+    
+    private function loadBlockchain()
+    {       
+        $oSqlChain = $this->cSQLite->query("SELECT * FROM `blockchain` ORDER BY `index`");
+        $aSqlChain = $oSqlChain->fetchArray();
+        if($aSqlChain !== false)
+        {
+            self::debug("Start syncing blockchain...");
+            while($aSqlChain)
+            {
+                if($aSqlChain['index'] > 0)
+                {
+                    $this->addBlockToChain(new cBlock($aSqlChain['index'], $aSqlChain['hash'], $aSqlChain['prevHash'], $aSqlChain['timestamp'], $aSqlChain['data'], $aSqlChain['difficulty'], $aSqlChain['nonce']));
+                }
+                else
+                {
+                    $this->aChain = [new cBlock($aSqlChain['index'], $aSqlChain['hash'], $aSqlChain['prevHash'], $aSqlChain['timestamp'], $aSqlChain['data'], $aSqlChain['difficulty'], $aSqlChain['nonce'])];
+                }
+                $aSqlChain = $oSqlChain->fetchArray();
+            }
+            
+            if($this->isValidChain($this->aChain))
+            {
+                self::debug("Blockchain seems to be valid");
+            }
+            else
+            {
+                self::debug("Blockchain seems to be corrupt, start a new one!");
+                $this->aChain = [];
+            }
+            
+            self::debug("Blockchain loading done! ".count($this->aChain)." block(s) added to the chain");
+        }
+    }
+    
+    private function addBlockToDatabase(cBlock $oBlock)
+    {
+        $oSqlCheck = $this->cSQLite->query("SELECT * FROM `blockchain` WHERE `index` = '{$oBlock->index}'");
+        if(!$oSqlCheck->fetchArray())
+        {
+            $bCheck = $this->cSQLite->exec("INSERT INTO `blockchain` (`index`, `hash`, `prevHash`, `timestamp`, `data`, `difficulty`, `nonce`) VALUES ('{$oBlock->index}', '{$oBlock->hash}', '{$oBlock->prevHash}', '{$oBlock->timestamp}', '{$oBlock->data}', '{$oBlock->difficulty}', '{$oBlock->nonce}')");
+            if($bCheck)
+            {
+                self::debug("Block added to the chain (DB)");
+            }
+            else
+            {
+                self::debug("Block NOT added to the chain (DB)");
+            }
+        }
     }
     
     /**
@@ -22,8 +91,7 @@ class cBlockchain
      */
     private function createGenesisBlock(): cBlock
     {
-        $this->oGenesisBlock = new cBlock(0, "0980bd82e10152a1f76aba0935806d58051a47b9e3683cf8062e07ad827bb5a4", "", 1516575600, "Genesis Block", 0, 0);
-        return $this->oGenesisBlock;
+        return new cBlock(0, "0980bd82e10152a1f76aba0935806d58051a47b9e3683cf8062e07ad827bb5a4", "", 1516575600, "Genesis Block", 0, 0);
     }
     
     /**
@@ -84,7 +152,7 @@ class cBlockchain
         {
             return $oPrevAdjustmentBlock->difficulty + 1;
         }
-        elseif($iTimeTaken > ($iTimeExpected * 2))
+        elseif($iTimeTaken > ($iTimeExpected * 2) && $oPrevAdjustmentBlock->difficulty > 0)
         {
             return $oPrevAdjustmentBlock->difficulty - 1;
         }
@@ -104,6 +172,11 @@ class cBlockchain
      */
     private function hashMatchesDifficulty(string $sHash, int $iDifficulty): bool
     {
+        if($iDifficulty < 0)
+        {
+            self::debug("Difficulty incorrect ({$iDifficulty})");
+            return true;
+        }
         $sHashInBinary = (string)hex2bin($sHash);
         $sRequiredPrefix = (string)str_repeat('0', $iDifficulty);
         
@@ -359,7 +432,11 @@ class cBlockchain
     {
         if($this->isValidNewBlock($oNewBlock, $this->getLastBlock()) === true)
         {
+            // Push to blockchain array
             array_push($this->aChain, $oNewBlock);
+            
+            // Add block to DB
+            $this->addBlockToDatabase($oNewBlock);
         }
     }
 }

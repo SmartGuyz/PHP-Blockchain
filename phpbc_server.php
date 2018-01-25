@@ -17,6 +17,9 @@ if(!isset($_SERVER['argv'][1]) OR !in_array($_SERVER['argv'][1], $aCommands))
 }
 elseif($_SERVER['argv'][1] == "start")
 {
+    // Load and start blockchain
+    $cBlockchain = new cBlockchain($cSQLite);
+    
     if(file_exists($sLockFile))
     {
         die(" * {$sName} can't create pid-lock, the file exists at {$sLockFile}\n * It looks like {$sName} is allready running!\n");
@@ -48,7 +51,7 @@ elseif($_SERVER['argv'][1] == "start")
                 $rHandle = fopen($sLockFile, "a");
                 fprintf($rHandle, "%s\n", posix_getpid());
                 fclose($rHandle);
-                
+
                 // Start server
                 (new $aCmd[$i]['name']())->run($cBlockchain);
             }

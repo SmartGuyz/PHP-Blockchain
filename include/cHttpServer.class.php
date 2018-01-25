@@ -77,8 +77,6 @@ class cHttpServer
                     }
                     
                     socket_getpeername($rClient, $sClientIP, $sClientPort);
-                    
-                    self::debug("\n[{$sClientIP}:{$sClientPort}] >> {$sBuffer}");
 
                     // Make array of lines
                     $aIncoming = explode("\r\n", $sBuffer);
@@ -86,7 +84,6 @@ class cHttpServer
                     // Extract body from headers
                     $bJson = false;
                     $aBody = explode("\r\n\r\n", $sBuffer);
-                    print_r($aBody);
                     $sBody = ((isset($aBody[1])) ? $aBody[1] : "");
                     if(@json_decode(trim($sBody)))
                     {
@@ -102,6 +99,9 @@ class cHttpServer
                     $aArguments = explode("/", $sPage);
                     unset($aArguments[0]); // Always empty
                     
+                    // Debug
+                    self::debug("\n[{$sClientIP}:{$sClientPort}] >> {$aIncoming[0]}");
+                    
                     // check if we have any arguments (pages)
                     if(count($aArguments) > 0)
                     {
@@ -115,7 +115,7 @@ class cHttpServer
                                         $this->send($rClient, $this->cBlockchain->getBlockchain(), $iKey);
                                         break;
                                     case 'block':       // Return only the requested block (hash)
-                                        if(!isset($aArguments[2]) OR strlen($aArguments[2]) <> 64)
+                                        if(!isset($aArguments[2]))
                                         {
                                             $this->send($rClient, ['error' => 'Block hash invalid'], $iKey, "400 Bad Request");
                                         }
@@ -129,6 +129,32 @@ class cHttpServer
                                             else
                                             {
                                                 $this->send($rClient, ['error' => 'Block hash not found'], $iKey, "404 Not found");
+                                            }
+                                        }
+                                        break;
+                                    case 'search':       // Searching the blockchain for data
+                                        if(!isset($aArguments[2]))
+                                        {
+                                            $this->send($rClient, ['error' => 'Search argument invalid'], $iKey, "400 Bad Request");
+                                        }
+                                        else 
+                                        {
+                                            $aChainKeys = preg_grep("/{$aArguments[2]}/i", array_column($this->cBlockchain->getBlockchain(), 'data'));
+                                            if($aChainKeys !== false && !empty($aChainKeys) && count($aChainKeys) > 0)
+                                            {
+                                                $aBlockchain = $this->cBlockchain->getBlockchain();
+                                                foreach($aChainKeys AS $iChainKey => $sValue)
+                                                {
+                                                    $aTemp[] = $aBlockchain[$iChainKey];
+                                                }
+                                                $this->send($rClient, $aTemp, $iKey);
+                                                
+                                                unset($aBlockchain);
+                                                unset($aTemp);
+                                            }
+                                            else
+                                            {
+                                                $this->send($rClient, ['error' => 'Search argument not found'], $iKey, "404 Not found");
                                             }
                                         }
                                         break;

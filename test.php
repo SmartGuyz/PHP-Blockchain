@@ -1,5 +1,5 @@
 <?php
-$aPostFiels['data'] = "test";
+$aPostFiels['data'] = "Andre Gerritsen";
 
 $rCurl = curl_init();
 

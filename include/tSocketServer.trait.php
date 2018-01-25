@@ -1,7 +1,9 @@
 <?php
 trait tSocketServer
 {
-    private function connect()
+    use tUtils;
+    
+    private function createSocket()
     {
         if(($this->rMasterSocket = @socket_create(AF_INET, SOCK_STREAM, 0)) === false)
         {
@@ -40,12 +42,7 @@ trait tSocketServer
             self::debug("* Socket is now listening, waiting for clients to connect...".PHP_EOL);
         }
     }
-    
-    private static function debug($sData)
-    {
-        echo "{$sData}".PHP_EOL;
-    }
-    
+       
     private function send($rSocket, $aData, $iKey, $sHttpCode = "200 OK")
     {
         $sHeader = "HTTP/1.1 {$sHttpCode}\r\n";
