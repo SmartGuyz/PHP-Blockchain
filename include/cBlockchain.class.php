@@ -3,7 +3,7 @@ class cBlockchain
 {
     use tUtils;
     
-    private $aChain, $oGenesisBlock, $cSQLiteBC, $cSQLitePeers;
+    private $aChain, $oGenesisBlock, $cSQLiteBC;
     
     const BLOCK_GENERATION_INTERVAL = 10; // Seconden
     const DIFFICULTY_ADJUSTMENT_INTERVAL = 10; // Blocks
@@ -11,10 +11,9 @@ class cBlockchain
     /**
      * Adding genesis block to the chain
      */
-    public function __construct(SQLite3 $oSQLiteBC, SQLite3 $oSQLitePeers)
+    public function __construct(SQLite3 $oSQLiteBC)
     {
         $this->cSQLiteBC = $oSQLiteBC;
-        $this->cSQLitePeers = $oSQLitePeers;
         
         // Generate genesis block
         $this->oGenesisBlock = $this->createGenesisBlock();

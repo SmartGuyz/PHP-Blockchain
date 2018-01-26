@@ -32,21 +32,21 @@ if(file_exists($sConfig))
     {
         die("The ini file is corrupt, variable \"datafile_peers\" is missing in \"database\"");
     }
-    elseif(!isset($aIniValues['http-server']['remote_address']))
+    elseif(!isset($aIniValues['server']['http_address']))
     {
-        die("The ini file is corrupt, variable \"remote_address\" is missing in \"http-server\"");
+        die("The ini file is corrupt, variable \"http_address\" is missing in \"server\"");
     }
-    elseif(!isset($aIniValues['http-server']['remote_port']))
+    elseif(!isset($aIniValues['server']['http_port']))
     {
-        die("The ini file is corrupt, variable \"remote_port\" is missing in \"http-server\"");
+        die("The ini file is corrupt, variable \"http_port\" is missing in \"server\"");
     }
-    elseif(!isset($aIniValues['p2p-server']['remote_address']))
+    elseif(!isset($aIniValues['server']['p2p_address']))
     {
-        die("The ini file is corrupt, variable \"remote_address\" is missing in \"p2p-server\"");
+        die("The ini file is corrupt, variable \"p2p_address\" is missing in \"server\"");
     }
-    elseif(!isset($aIniValues['p2p-server']['remote_port']))
+    elseif(!isset($aIniValues['server']['p2p_port']))
     {
-        die("The ini file is corrupt, variable \"remote_port\" is missing in \"p2p-server\"");
+        die("The ini file is corrupt, variable \"p2p_port\" is missing in \"server\"");
     }
 }
 else
@@ -97,9 +97,6 @@ spl_autoload_register('default_autoloader');
 // Open/Create SQLite DB for the blockchain
 $cSQLiteBC = new SQLite3($aIniValues['database']['datafile_blockchain']);
 
-// Open/Create SQLite DB for the peers
-$cSQLitePeers = new SQLite3($aIniValues['database']['datafile_peers']);
-
 // Check tables
 $oSqlBC = $cSQLiteBC->query("SELECT `name` FROM `sqlite_master` WHERE `type` = 'table' AND `name` = 'blockchain'");
 if(!$oSqlBC->fetchArray())
@@ -120,27 +117,13 @@ if(!$oSqlBC->fetchArray())
     }
 }
 
-$oSqlP2P = $cSQLitePeers->query("SELECT `name` FROM `sqlite_master` WHERE `type` = 'table' AND `name` = 'peers'");
-if(!$oSqlP2P->fetchArray())
-{
-    $sQuery = "CREATE TABLE `peers` (";
-    $sQuery .= "`id` INTEGER PRIMARY KEY AUTOINCREMENT,";
-    $sQuery .= "`remote_address` CHAR(38) NOT NULL,";
-    $sQuery .= "`remote_port` INTEGER NOT NULL";
-    $sQuery .= ")";
-    
-    $cSQLitePeers->exec($sQuery);
-}
-
 // HTTP server
-$aCmd[0]['name'] 	= "cHttpServer";
-$aCmd[0]['ip'] 	    = $aIniValues['http-server']['remote_address'];
-$aCmd[0]['port'] 	= $aIniValues['http-server']['remote_port'];
-
-// P2P server
-$aCmd[1]['name'] 	= "cP2PServer";
-$aCmd[1]['ip'] 	    = $aIniValues['p2p-server']['remote_address'];
-$aCmd[1]['port'] 	= $aIniValues['p2p-server']['remote_port'];
+$aConfig[0]['name'] 	= "http";
+$aConfig[0]['ip'] 	    = $aIniValues['server']['http_address'];
+$aConfig[0]['port'] 	= $aIniValues['server']['http_port'];
+$aConfig[1]['name'] 	= "p2p";
+$aConfig[1]['ip'] 	    = $aIniValues['server']['p2p_address'];
+$aConfig[1]['port'] 	= $aIniValues['server']['p2p_port'];
 
 // Start commands
 $aCommands[] = "start";

@@ -24,10 +24,10 @@ elseif($_SERVER['argv'][1] == "start")
     else
     {
         // Load and start blockchain
-        $cBlockchain = new cBlockchain($cSQLiteBC, $cSQLitePeers);
+        $cBlockchain = new cBlockchain($cSQLiteBC);
         
         $aPid = [];
-        for($i = 0; $i < count($aCmd); $i++)
+        for($i = 0; $i < 1; $i++)
         {
             $aPid[$i] = pcntl_fork();
             if($aPid[$i] == -1)			// Whoops, error ;-)
@@ -36,7 +36,7 @@ elseif($_SERVER['argv'][1] == "start")
             }
             elseif($aPid[$i])			// Parent must die when all childs are here ;-)
             {
-                if($i == count($aCmd) - 1)
+                if($i == 0)
                 {
                     die(" * {$sName} has been started succesfully!\n");
                 }
@@ -51,9 +51,11 @@ elseif($_SERVER['argv'][1] == "start")
                 $rHandle = fopen($sLockFile, "a");
                 fprintf($rHandle, "%s\n", posix_getpid());
                 fclose($rHandle);
-
+                
+                echo " * Forked child with pid ".posix_getpid()."\n";
+                
                 // Start server
-                (new $aCmd[$i]['name']($aCmd[$i]['ip'], $aCmd[$i]['port']))->run($cBlockchain);
+                (new cHttpServer($aConfig))->run($cBlockchain);
             }
         }
     }
