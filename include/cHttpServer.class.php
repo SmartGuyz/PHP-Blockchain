@@ -218,7 +218,7 @@ class cHttpServer
                                                     // Send message to the newly added peer
                                                     end($this->aClientsInfo);
                                                     $iLastArrayID = key($this->aClientsInfo);
-                                                    $this->send($this->cBlockchain->queryChainLengthMsg(), $iLastArrayID);
+                                                    $this->sendPeers($this->cBlockchain->queryChainLengthMsg(), $iLastArrayID);
                                                 }
                                                 else
                                                 {
