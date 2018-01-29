@@ -257,9 +257,11 @@ class cHttpServer
                         switch($iMessageType)
                         {
                             case cP2PServer::QUERY_LATEST:
+                                self::debug("Sending out responseLatestMsg()");
                                 $this->sendPeers($this->cBlockchain->responseLatestMsg(), $iKey);
                                 break;
                             case cP2PServer::QUERY_ALL:
+                                self::debug("Sending out responseChainMsg()");
                                 $this->sendPeers($this->cBlockchain->responseChainMsg(), $iKey);
                                 break;
                             case cP2PServer::RESPONSE_BLOCKCHAIN:
@@ -267,6 +269,7 @@ class cHttpServer
                                 {
                                     break;
                                 }
+                                self::debug("handleBlockchainResponse()");
                                 $this->cBlockchain->handleBlockchainResponse($oMessageData);
                                 break;
                             default:
