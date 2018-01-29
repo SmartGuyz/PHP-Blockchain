@@ -13,7 +13,9 @@ trait tSocketServer
         
         socket_set_nonblock($rSocket); 
         
-        $iAttempts = 0;
+        @socket_connect($rSocket, $oData->address, $oData->port);
+        
+        /*$iAttempts = 0;
         $bConnected; 
         while(!($bConnected = @socket_connect($rSocket, $oData->address, $oData->port)) && $iAttempts < 3) 
         {
@@ -31,7 +33,7 @@ trait tSocketServer
             socket_close($rSocket);
             return false;
         }
-        
+        */
         socket_set_block($rSocket); 
         
         return $rSocket;

@@ -208,16 +208,8 @@ class cHttpServer
                                             case 'addPeer':
                                                 $rSocket = $this->connectToPeer((object)$oBody->data);
                                                 if(is_resource($rSocket))
-                                                {
-                                                    // Client info
-                                                    socket_getpeername($rSocket, $sClientIP, $sClientPort);
-                                                    
-                                                    // Serv info
-                                                    socket_getsockname($rSocket, $sServerIP, $sServerPort);
-                                                    
-                                                    self::debug("Peer connection to {$sClientIP}:{$sClientPort} on {$sServerIP}:{$sServerPort} (p2p)");
-                                                    
-                                                    $this->aClientsInfo[] = ['resource' => $rSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => 'p2p'];
+                                                {                                                   
+                                                    $this->aClientsInfo[] = ['resource' => $rSocket, 'ipaddr' => $oBody->data->address, 'port' => $oBody->data->port, 'protocol' => 'p2p'];
                                                     $this->cBlockchain->aPeers[] = ['resource' => $rSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => 'p2p'];
                                                     
                                                     // Send message to the host that added the peer
@@ -256,6 +248,8 @@ class cHttpServer
                     elseif($aClient['protocol'] == 'p2p')
                     {
                         $oMessage = trim($sBuffer);
+                        
+                        print_r($oMessage);
                         
                         $iMessageType = (int)$oMessage->type;
                         $oMessageData = @json_decode($oMessage->data);

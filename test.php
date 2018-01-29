@@ -1,5 +1,5 @@
 <?php
-$aPostFiels['data'] = ['address' => '188.227.207.200', 'port' => 6001];
+$aPostFiels['data'] = ['address' => '188.227.207.70', 'port' => 6001];
 
 $rCurl = curl_init();
 
