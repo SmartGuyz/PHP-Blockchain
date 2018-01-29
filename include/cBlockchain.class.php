@@ -1,5 +1,5 @@
 <?php
-class cBlockchain
+class cBlockchain extends cP2PServer
 {
     use tUtils;
     
@@ -99,7 +99,7 @@ class cBlockchain
      * 
      * @return cBlock
      */
-    private function getLastBlock(): cBlock
+    public function getLastBlock(): cBlock
     {
         return $this->aChain[count($this->aChain) - 1];
     }

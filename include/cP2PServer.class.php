@@ -1,6 +1,8 @@
 <?php
-class cP2PServer
+abstract class cP2PServer
 {
+    abstract function getLastBlock();
+    
     const 
         QUERY_LATEST = 0,
         QUERY_ALL = 1,
@@ -10,7 +12,8 @@ class cP2PServer
     
     private function responseLatestMsg()
     {
-        
+        $aResponse['type'] = self::RESPONSE_BLOCKCHAIN;
+        $aResponse['data'] = $this->getLastBlock();
     }
     
     private function queryTransactionPoolMsg()

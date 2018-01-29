@@ -1,5 +1,5 @@
 <?php
-class cHttpServer extends cP2PServer
+class cHttpServer
 {
     use tSocketServer;
     
@@ -205,6 +205,16 @@ class cHttpServer extends cP2PServer
                                                 $rSocket = $this->connectToPeer((object)$oBody->data);
                                                 if(is_resource($rSocket))
                                                 {
+                                                    // Client info
+                                                    socket_getpeername($rSocket, $sClientIP, $sClientPort);
+                                                    
+                                                    // Serv info
+                                                    socket_getsockname($rSocket, $sServerIP, $sServerPort);
+                                                    
+                                                    self::debug("Peer connection to {$sClientIP}:{$sClientPort} on {$sServerIP}:{$sServerPort} (p2p)");
+                                                    
+                                                    $this->aClientsInfo[] = ['resource' => $rSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => 'p2p'];
+                                                    
                                                     $this->send($aClient['resource'], ['message' => "Connected with {$oBody->data->address}:{$oBody->data->port} succesfull {$rSocket}"], $iKey);
                                                 }
                                                 else
@@ -236,31 +246,25 @@ class cHttpServer extends cP2PServer
                     {
                         $oMessage = json_decode(trim($sBuffer));
                         
-                        $iMessageType = $oMessage->type;
-                        switch($sMethod)
+                        $iMessageType = (int)$oMessage->type;
+                        $sMessageData = $oMessage->date;
+
+                        switch($iMessageType)
                         {
-                            case 'GET':
-                                switch($iMessageType)
-                                {
-                                    case $cBlockchain::QUERY_LATEST:
-                                        // TODO Response with responseLatestMsg
-                                        break;
-                                    case $cBlockchain::QUERY_ALL:
-                                        // TODO Response with responseChainMsg
-                                        break;
-                                    case $cBlockchain::RESPONSE_BLOCKCHAIN:
-                                        // TODO Handling incoming blockchain
-                                        break;
-                                    case $cBlockchain::QUERY_TRANSACTION_POOL:
-                                        // TODO Response with responseTransactionPoolMsg
-                                        break;
-                                    case $cBlockchain::RESPONSE_TRANSACTION_POOL:
-                                        // TODO
-                                        break;
-                                    default:
-                                        $this->send($aClient['resource'], '', $iKey, 404);
-                                        break;
-                                }
+                            case cP2PServer::QUERY_LATEST:
+                                // TODO Response with responseLatestMsg
+                                break;
+                            case cP2PServer::QUERY_ALL:
+                                // TODO Response with responseChainMsg
+                                break;
+                            case cP2PServer::RESPONSE_BLOCKCHAIN:
+                                // TODO Handling incoming blockchain
+                                break;
+                            case cP2PServer::QUERY_TRANSACTION_POOL:
+                                // TODO Response with responseTransactionPoolMsg
+                                break;
+                            case cP2PServer::RESPONSE_TRANSACTION_POOL:
+                                // TODO
                                 break;
                             default:
                                 $this->send($aClient['resource'], '', $iKey, 404);
