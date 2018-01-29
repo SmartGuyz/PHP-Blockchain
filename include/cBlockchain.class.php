@@ -242,7 +242,7 @@ class cBlockchain extends cP2PServer
      * @param cBlock $oBlock
      * @return bool
      */
-    private function isValidBlockStructure(cBlock $oBlock): bool
+    public function isValidBlockStructure(cBlock $oBlock): bool
     {
         if(!gettype($oBlock->index) == "integer")
         {
@@ -392,7 +392,7 @@ class cBlockchain extends cP2PServer
      * 
      * @param array $aNewBlocks
      */
-    private function replaceChain(array $aNewBlocks): void
+    public function replaceChain(array $aNewBlocks): void
     {
         if($this->isValidChain($aNewBlocks) && $this->getAccumulatedDifficulty($aNewBlocks) > $this->getAccumulatedDifficulty($this->aChain))
         {
@@ -428,7 +428,7 @@ class cBlockchain extends cP2PServer
      * 
      * @param cBlock $oNewBlock
      */
-    private function addBlockToChain(cBlock $oNewBlock): void
+    public function addBlockToChain(cBlock $oNewBlock): void
     {
         if($this->isValidNewBlock($oNewBlock, $this->getLastBlock()) === true)
         {

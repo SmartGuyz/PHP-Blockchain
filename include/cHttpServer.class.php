@@ -64,6 +64,11 @@ class cHttpServer
                         self::debug("Incoming connection from {$sClientIP}:{$sClientPort} on {$sServerIP}:{$sServerPort} ({$aValue['name']})");
 
                         $this->aClientsInfo[] = ['resource' => $rMsgSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => $aValue['name']];
+                        
+                        if($aValue['name'] == 'p2p')
+                        {
+                            $this->cBlockchain->aPeers[] = ['resource' => $rMsgSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => $aValue['name']];
+                        }
                     }
                 }
             }
@@ -118,23 +123,23 @@ class cHttpServer
                                     switch($aArguments[1])
                                     {
                                         case 'blocks':      // Return all blocks of the chain
-                                            $this->send($aClient['resource'], $this->cBlockchain->getBlockchain(), $iKey);
+                                            $this->send($this->cBlockchain->getBlockchain(), $iKey);
                                             break;
                                         case 'block':       // Return only the requested block (hash)
                                             if(!isset($aArguments[2]))
                                             {
-                                                $this->send($aClient['resource'], '', $iKey, 400);
+                                                $this->send('', $iKey, 400);
                                             }
                                             else 
                                             {
                                                 $iChainKey = array_search($aArguments[2], array_column($this->cBlockchain->getBlockchain(), 'hash'));
                                                 if($iChainKey !== false)
                                                 {
-                                                    $this->send($aClient['resource'], $this->cBlockchain->getBlockchain()[$iChainKey], $iKey);
+                                                    $this->send($this->cBlockchain->getBlockchain()[$iChainKey], $iKey);
                                                 }
                                                 else
                                                 {
-                                                    $this->send($aClient['resource'], '', $iKey, 404);
+                                                    $this->send('', $iKey, 404);
                                                 }
                                             }
                                             break;
@@ -146,20 +151,20 @@ class cHttpServer
                                                 {
                                                     $aTemp[] = "{$aTempClient['ipaddr']}:{$aTempClient['port']}";
                                                 }
-                                                $this->send($aClient['resource'], ((count($aTemp) == 0) ? ['error' => 'No peers found'] : $aTemp), $iKey);
+                                                $this->send(((count($aTemp) == 0) ? ['error' => 'No peers found'] : $aTemp), $iKey);
                                                 
                                                 unset($aP2PKeys);
                                                 unset($aTemp);
                                             }
                                             else
                                             {
-                                                $this->send($aClient['resource'], '', $iKey, 404);
+                                                $this->send('', $iKey, 404);
                                             }
                                             break;
                                         case 'search':       // Searching the blockchain for data
                                             if(!isset($aArguments[2]))
                                             {
-                                                $this->send($aClient['resource'], '', $iKey, 400);
+                                                $this->send('', $iKey, 400);
                                             }
                                             else 
                                             {
@@ -171,7 +176,7 @@ class cHttpServer
                                                     {
                                                         $aTemp[] = $aBlockchain[$iChainKey];
                                                     }
-                                                    $this->send($aClient['resource'], $aTemp, $iKey);
+                                                    $this->send($aTemp, $iKey);
                                                     
                                                     unset($aChainKeys);
                                                     unset($aBlockchain);
@@ -179,12 +184,12 @@ class cHttpServer
                                                 }
                                                 else
                                                 {
-                                                    $this->send($aClient['resource'], '', $iKey, 404);
+                                                    $this->send('', $iKey, 404);
                                                 }
                                             }
                                             break;
                                         default:
-                                            $this->send($aClient['resource'], '', $iKey, 404);
+                                            $this->send('', $iKey, 404);
                                             break;
                                         }
                                     break;
@@ -198,10 +203,9 @@ class cHttpServer
                                         {
                                             case 'mineBlock':
                                                 $oNewBlock = $this->cBlockchain->generateNextBlock((string)$oBody->data);
-                                                $this->send($aClient['resource'], $oNewBlock, $iKey);
+                                                $this->send($oNewBlock, $iKey);
                                                 break;
                                             case 'addPeer':
-                                                // TODO connectToPeers()
                                                 $rSocket = $this->connectToPeer((object)$oBody->data);
                                                 if(is_resource($rSocket))
                                                 {
@@ -214,66 +218,71 @@ class cHttpServer
                                                     self::debug("Peer connection to {$sClientIP}:{$sClientPort} on {$sServerIP}:{$sServerPort} (p2p)");
                                                     
                                                     $this->aClientsInfo[] = ['resource' => $rSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => 'p2p'];
+                                                    $this->cBlockchain->aPeers[] = ['resource' => $rSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => 'p2p'];
                                                     
-                                                    $this->send($aClient['resource'], ['message' => "Connected with {$oBody->data->address}:{$oBody->data->port} succesfull {$rSocket}"], $iKey);
+                                                    // Send message to the host that added the peer
+                                                    $this->send(['message' => "Connected with {$oBody->data->address}:{$oBody->data->port} succesfull {$rSocket}"], $iKey);
+                                                    
+                                                    // Send message to the newly added peer
+                                                    end($this->aClientsInfo);
+                                                    $iLastArrayID = key($this->aClientsInfo);
+                                                    $this->send($this->cBlockchain->queryChainLengthMsg(), $iLastArrayID);
                                                 }
                                                 else
                                                 {
-                                                    $this->send($aClient['resource'], ['message' => "Connected with {$oBody->data->address}:{$oBody->data->port} failed"], $iKey);
+                                                    $this->send(['message' => "Connected with {$oBody->data->address}:{$oBody->data->port} failed"], $iKey);
                                                 }
                                                 break;
                                             default:
-                                                $this->send($aClient['resource'], '', $iKey, 404);
+                                                $this->send('', $iKey, 404);
                                                 break;
                                         }
                                     }
                                     else
                                     {
-                                        $this->send($aClient['resource'], '', $iKey, 400);
+                                        $this->send('', $iKey, 400);
                                     }
                                     break;
                                 default:
-                                    $this->send($aClient['resource'], '', $iKey, 404);
+                                    $this->send('', $iKey, 404);
                                     break;
                             }
                         }
                         else
                         {
-                            $this->send($aClient['resource'], '', $iKey, 404);
+                            $this->send('', $iKey, 404);
                         }
                     }
                     elseif($aClient['protocol'] == 'p2p')
                     {
-                        $oMessage = json_decode(trim($sBuffer));
+                        $oMessage = trim($sBuffer);
                         
                         $iMessageType = (int)$oMessage->type;
-                        $sMessageData = $oMessage->date;
+                        $oMessageData = @json_decode($oMessage->data);
 
                         switch($iMessageType)
                         {
                             case cP2PServer::QUERY_LATEST:
-                                // TODO Response with responseLatestMsg
+                                $this->sendPeers($this->cBlockchain->responseLatestMsg(), $iKey);
                                 break;
                             case cP2PServer::QUERY_ALL:
-                                // TODO Response with responseChainMsg
+                                $this->sendPeers($this->cBlockchain->responseChainMsg(), $iKey);
                                 break;
                             case cP2PServer::RESPONSE_BLOCKCHAIN:
-                                // TODO Handling incoming blockchain
-                                break;
-                            case cP2PServer::QUERY_TRANSACTION_POOL:
-                                // TODO Response with responseTransactionPoolMsg
-                                break;
-                            case cP2PServer::RESPONSE_TRANSACTION_POOL:
-                                // TODO
+                                if(!is_object($oMessageData))
+                                {
+                                    break;
+                                }
+                                $this->cBlockchain->handleBlockchainResponse($oMessageData);
                                 break;
                             default:
-                                $this->send($aClient['resource'], '', $iKey, 404);
+                                $this->sendPeers('', $iKey, 404);
                                 break;
                         }
                     }
                     else
                     {
-                        $this->send($aClient['resource'], '', $iKey, 404);
+                        $this->send('', $iKey, 404);
                     }
                 }
             }

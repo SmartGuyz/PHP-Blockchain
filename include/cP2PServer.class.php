@@ -2,6 +2,10 @@
 abstract class cP2PServer
 {
     abstract function getLastBlock();
+    abstract function getBlockchain();
+    abstract function isValidBlockStructure(cBlock $oBlock);
+    abstract function addBlockToChain(cBlock $oNewBlock);
+    abstract function replaceChain(array $aNewBlocks);
     
     const 
         QUERY_LATEST = 0,
@@ -10,45 +14,97 @@ abstract class cP2PServer
         QUERY_TRANSACTION_POOL = 3,
         RESPONSE_TRANSACTION_POOL = 4;
     
-    private function responseLatestMsg()
+    public $aPeers;
+    
+    public function responseLatestMsg()
     {
-        $aResponse['type'] = self::RESPONSE_BLOCKCHAIN;
-        $aResponse['data'] = $this->getLastBlock();
+        $oResponse = new stdClass();
+        $oResponse->type = self::RESPONSE_BLOCKCHAIN;
+        $oResponse->data = json_encode($this->getLastBlock());
+        
+        return $oResponse;
     }
     
-    private function queryTransactionPoolMsg()
+    public function responseChainMsg()
     {
+        $oResponse = new stdClass();
+        $oResponse->type = self::RESPONSE_BLOCKCHAIN;
+        $oResponse->data = json_encode($this->getBlockchain());
         
+        return $oResponse;
     }
     
-    private function queryChainLengthMsg()
+    public function broadcastLatest()
     {
-        
+        $this->broadcast(responseLatestMsg());
     }
     
-    private function queryAllMsg()
+    public function queryChainLengthMsg()
     {
+        $oResponse = new stdClass();
+        $oResponse->type = self::QUERY_LATEST;
+        $oResponse->data = null;
         
+        return $oResponse;
     }
     
-    private function responseTransactionPoolMsg()
+    public function queryAllMsg()
     {
+        $oResponse = new stdClass();
+        $oResponse->type = self::QUERY_ALL;
+        $oResponse->data = null;
         
+        return $oResponse;
     }
     
-    private function broadcastLatest()
+    
+    public function broadcast(stdClass $oData)
     {
-        
+        foreach($this->aPeers AS $iKey => $aPeer)
+        {
+            socket_send($aPeer['resource'], $oData, strlen($oData), MSG_EOF);
+        }
     }
     
-    private function broadCastTransactionPool()
+    public function handleBlockchainResponse(array $aReceivedBlocks)
     {
+        if(count($aReceivedBlocks) == 0)
+        {
+            return;
+        }
         
-    }
-    
-    private function handleBlockchainResponse()
-    {
+        $oLatestBlockReceived = $aReceivedBlocks[count($aReceivedBlocks) - 1];
+        if(!$this->isValidBlockStructure($oLatestBlockReceived))
+        {
+            return;
+        }
         
+        $oLatestBlockHeld = $this->getLastBlock();
+        if($oLatestBlockReceived->index > $oLatestBlockHeld->index)     // is blockchain behind?
+        {
+            if($oLatestBlockHeld->hash === $oLatestBlockReceived->prevHash)
+            {
+                if($this->addBlockToChain($oLatestBlockReceived))
+                {
+                    $this->broadcastLatest();
+                }
+            }
+            elseif(count($aReceivedBlocks) === 1)
+            {
+                // We have to query the chain from our peer
+                $this->broadcast(queryAllMsg());
+            }
+            else
+            {
+                // Received blockchain is longer than current blockchain
+                $this->replaceChain($aReceivedBlocks);
+            }
+        }
+        else
+        {
+            //received blockchain is not longer than received blockchain. Do nothing
+            return;
+        }
     }
 }
 ?>

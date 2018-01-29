@@ -22,7 +22,7 @@ trait tSocketServer
                 socket_close($rSocket);
                 return false;
             }
-            $attempts++;
+            $iAttempts++;
             usleep(1000);
         }
         
@@ -85,7 +85,7 @@ trait tSocketServer
         }
     }
        
-    private function send($rSocket, $aData, $iKey, $iHttpCode = 200)
+    private function send($aData, $iKey, $iHttpCode = 200)
     {
         switch($iHttpCode) 
         {
@@ -136,9 +136,14 @@ trait tSocketServer
         
         $sData = (($iHttpCode == 200) ? $sHeader.json_encode($aData, JSON_PRETTY_PRINT) : $sHeader);
         
-        socket_send($rSocket, $sData, strlen($sData), MSG_EOF);
+        socket_send($this->aClientsInfo[$iKey]['resource'], $sData, strlen($sData), MSG_EOF);
         
         $this->closeConnection($iKey);
+    }
+    
+    private function sendPeers($oData, $iKey)
+    {
+        socket_send($this->aClientsInfo[$iKey]['resource'], $oData, strlen($oData), MSG_EOF);
     }
     
     private function closeConnection($iKey)
@@ -147,11 +152,6 @@ trait tSocketServer
         
         @socket_close($this->aClientsInfo[$iKey]['resource']);
         unset($this->aClientsInfo[$iKey]);
-    }
-    
-    private function broadcast()
-    {
-        // TODO Send message to all P2P peers
     }
 }
 ?>
