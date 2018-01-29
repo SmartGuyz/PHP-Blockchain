@@ -2,8 +2,47 @@
 trait tSocketServer
 {
     use tUtils;
+    
+    private function connectToPeer(stdClass $oData)
+    {
+        $rSocket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
         
-    private function createSocket(array $aIniValues)
+        // Set timeout
+        socket_set_option($rSocket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => 1, 'usec' => 0]);
+        socket_set_option($rSocket, SOL_SOCKET, SO_SNDTIMEO, ['sec' => 1, 'usec' => 0]);
+        
+        socket_set_nonblock($rSocket); 
+        
+        $iAttempts = 0;
+        $bConnected; 
+        while(!($bConnected = @socket_connect($rSocket, $oData->address, $oData->port)) && $iAttempts < 3) 
+        {
+            if(socket_last_error() != SOCKET_EINPROGRESS && socket_last_error() != SOCKET_EALREADY) 
+            {
+                socket_close($rSocket);
+                return false;
+            }
+            $attempts++;
+            usleep(1000);
+        }
+        
+        if(!$bConnected) 
+        {
+            socket_close($rSocket);
+            return false;
+        }
+        
+        socket_set_block($rSocket); 
+        
+        return $rSocket;
+    }
+        
+    /**
+     * Bind IP and port for http and P2P server
+     * 
+     * @param array $aIniValues
+     */
+    private function createSocket(array $aIniValues): void
     {
         foreach($aIniValues AS $iKey => $aValue)
         {
@@ -98,7 +137,6 @@ trait tSocketServer
         $sData = (($iHttpCode == 200) ? $sHeader.json_encode($aData, JSON_PRETTY_PRINT) : $sHeader);
         
         socket_send($rSocket, $sData, strlen($sData), MSG_EOF);
-        self::debug("[{$this->aClientsInfo[$iKey]['ipaddr']}:{$this->aClientsInfo[$iKey]['port']}] << {$sData}");
         
         $this->closeConnection($iKey);
     }
@@ -109,6 +147,11 @@ trait tSocketServer
         
         @socket_close($this->aClientsInfo[$iKey]['resource']);
         unset($this->aClientsInfo[$iKey]);
+    }
+    
+    private function broadcast()
+    {
+        // TODO Send message to all P2P peers
     }
 }
 ?>

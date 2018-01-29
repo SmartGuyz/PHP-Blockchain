@@ -84,35 +84,32 @@ class cHttpServer extends cP2PServer
                         $this->closeConnection($iKey);
                         continue;
                     }
-
-                    // Make array of lines
-                    $aIncoming = explode("\r\n", $sBuffer);
                     
-                    // Extract body from headers
-                    $bJson = false;
-                    $aBody = explode("\r\n\r\n", $sBuffer);
-                    $sBody = ((isset($aBody[1])) ? $aBody[1] : "");
-                    if(@json_decode(trim($sBody)))
+                    if($aClient['protocol'] == 'http')
                     {
-                        $bJson = true;
-                        $oBody = json_decode(trim($sBody));
-                    }
-                    
-                    // Get page and method
-                    preg_match('~.+?(?=\sHTTP\/1\.1)~is', $aIncoming[0], $aMatches);
-                    list($sMethod, $sPage) = explode(" ", $aMatches[0]);
-                    
-                    // Explode arguments
-                    $aArguments = explode("/", $sPage);
-                    unset($aArguments[0]); // Always empty
-                    
-                    // Debug
-                    self::debug("[{$aClient['ipaddr']}:{$aClient['port']}] >> {$aIncoming[0]}");
-                    
-                    // check if we have any arguments (pages)
-                    if(count($aArguments) > 0)
-                    {
-                        if($aClient['protocol'] == 'http')
+                        // Make array of lines
+                        $aIncoming = explode("\r\n", $sBuffer);
+                        
+                        // Extract body from headers
+                        $bJson = false;
+                        $aBody = explode("\r\n\r\n", $sBuffer);
+                        $sBody = ((isset($aBody[1])) ? $aBody[1] : "");
+                        if(@json_decode(trim($sBody)))
+                        {
+                            $bJson = true;
+                            $oBody = json_decode(trim($sBody));
+                        }
+                        
+                        // Get page and method
+                        preg_match('~.+?(?=\sHTTP\/1\.1)~is', $aIncoming[0], $aMatches);
+                        list($sMethod, $sPage) = explode(" ", $aMatches[0]);
+                        
+                        // Explode arguments
+                        $aArguments = explode("/", $sPage);
+                        unset($aArguments[0]); // Always empty
+                        
+                        // check if we have any arguments (pages)
+                        if(count($aArguments) > 0)
                         {
                             // POST or GET?
                             switch($sMethod)
@@ -145,9 +142,9 @@ class cHttpServer extends cP2PServer
                                             $aP2PKeys = preg_grep("/p2p/", array_column($this->aClientsInfo, 'protocol'));
                                             if($aP2PKeys !== false)
                                             {
-                                                foreach($this->aClientsInfo AS $iClient => $aClient)
+                                                foreach($aP2PKeys AS $iTempClient => $aTempClient)
                                                 {
-                                                    $aTemp[] = $aClient['ipaddr'].":".$aClient['port'];
+                                                    $aTemp[] = "{$aTempClient['ipaddr']}:{$aTempClient['port']}";
                                                 }
                                                 $this->send($aClient['resource'], ((count($aTemp) == 0) ? ['error' => 'No peers found'] : $aTemp), $iKey);
                                                 
@@ -200,8 +197,20 @@ class cHttpServer extends cP2PServer
                                         switch($aArguments[1])
                                         {
                                             case 'mineBlock':
-                                                $oNewBlock = $this->cBlockchain->generateNextBlock((string)$oBody->data); // TODO: Post data afvangen
+                                                $oNewBlock = $this->cBlockchain->generateNextBlock((string)$oBody->data);
                                                 $this->send($aClient['resource'], $oNewBlock, $iKey);
+                                                break;
+                                            case 'addPeer':
+                                                // TODO connectToPeers()
+                                                $rSocket = $this->connectToPeer((object)$oBody->data);
+                                                if(is_resource($rSocket))
+                                                {
+                                                    $this->send($aClient['resource'], ['message' => "Connected with {$oBody->data->address}:{$oBody->data->port} succesfull {$rSocket}"], $iKey);
+                                                }
+                                                else
+                                                {
+                                                    $this->send($aClient['resource'], ['message' => "Connected with {$oBody->data->address}:{$oBody->data->port} failed"], $iKey);
+                                                }
                                                 break;
                                             default:
                                                 $this->send($aClient['resource'], '', $iKey, 404);
@@ -218,13 +227,44 @@ class cHttpServer extends cP2PServer
                                     break;
                             }
                         }
-                        elseif($aClient['protocol'] == 'p2p')
-                        {
-                            // TODO: P2P Server
-                        }
                         else
                         {
                             $this->send($aClient['resource'], '', $iKey, 404);
+                        }
+                    }
+                    elseif($aClient['protocol'] == 'p2p')
+                    {
+                        $oMessage = json_decode(trim($sBuffer));
+                        
+                        $iMessageType = $oMessage->type;
+                        switch($sMethod)
+                        {
+                            case 'GET':
+                                switch($iMessageType)
+                                {
+                                    case $cBlockchain::QUERY_LATEST:
+                                        // TODO Response with responseLatestMsg
+                                        break;
+                                    case $cBlockchain::QUERY_ALL:
+                                        // TODO Response with responseChainMsg
+                                        break;
+                                    case $cBlockchain::RESPONSE_BLOCKCHAIN:
+                                        // TODO Handling incoming blockchain
+                                        break;
+                                    case $cBlockchain::QUERY_TRANSACTION_POOL:
+                                        // TODO Response with responseTransactionPoolMsg
+                                        break;
+                                    case $cBlockchain::RESPONSE_TRANSACTION_POOL:
+                                        // TODO
+                                        break;
+                                    default:
+                                        $this->send($aClient['resource'], '', $iKey, 404);
+                                        break;
+                                }
+                                break;
+                            default:
+                                $this->send($aClient['resource'], '', $iKey, 404);
+                                break;
                         }
                     }
                     else

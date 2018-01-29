@@ -7,5 +7,45 @@ class cP2PServer
         RESPONSE_BLOCKCHAIN = 2,
         QUERY_TRANSACTION_POOL = 3,
         RESPONSE_TRANSACTION_POOL = 4;
+    
+    private function responseLatestMsg()
+    {
+        
+    }
+    
+    private function queryTransactionPoolMsg()
+    {
+        
+    }
+    
+    private function queryChainLengthMsg()
+    {
+        
+    }
+    
+    private function queryAllMsg()
+    {
+        
+    }
+    
+    private function responseTransactionPoolMsg()
+    {
+        
+    }
+    
+    private function broadcastLatest()
+    {
+        
+    }
+    
+    private function broadCastTransactionPool()
+    {
+        
+    }
+    
+    private function handleBlockchainResponse()
+    {
+        
+    }
 }
 ?>
