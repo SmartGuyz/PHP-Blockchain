@@ -25,9 +25,9 @@ class cHttpServer
         while(true)
         {
             $this->aRead = [];
-            foreach($this->aIniValues AS $iKey => $aValue)
+            foreach($this->aIniValues AS $i => $aValue)
             {
-                $this->aRead[] = $this->rMasterSocket[$iKey];
+                $this->aRead[] = $this->rMasterSocket[$i];
             }
             
             $this->aRead = array_merge($this->aRead, array_column($this->aClientsInfo, 'resource'));
@@ -89,6 +89,8 @@ class cHttpServer
                         $this->closeConnection($iKey);
                         continue;
                     }
+                    
+                    self::debug("Received {$sBuffer}");
                     
                     if($aClient['protocol'] == 'http')
                     {
@@ -210,7 +212,7 @@ class cHttpServer
                                                 if(is_resource($rSocket))
                                                 {                                                   
                                                     $this->aClientsInfo[] = ['resource' => $rSocket, 'ipaddr' => $oBody->data->address, 'port' => $oBody->data->port, 'protocol' => 'p2p'];
-                                                    $this->cBlockchain->aPeers[] = ['resource' => $rSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => 'p2p'];
+                                                    $this->cBlockchain->aPeers[] = ['resource' => $rSocket, 'ipaddr' => $oBody->data->address, 'port' => $oBody->data->port, 'protocol' => 'p2p'];
                                                     
                                                     // Send message to the host that added the peer
                                                     $this->send(['message' => "Connected with {$oBody->data->address}:{$oBody->data->port} succesfull {$rSocket}"], $iKey);
@@ -247,9 +249,7 @@ class cHttpServer
                     }
                     elseif($aClient['protocol'] == 'p2p')
                     {
-                        $oMessage = trim($sBuffer);
-                        
-                        print_r($oMessage);
+                        $oMessage = unserialize(trim($sBuffer));
                         
                         $iMessageType = (int)$oMessage->type;
                         $oMessageData = @json_decode($oMessage->data);

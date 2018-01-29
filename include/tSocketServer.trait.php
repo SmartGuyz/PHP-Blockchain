@@ -145,7 +145,8 @@ trait tSocketServer
     
     private function sendPeers($oData, $iKey)
     {
-        socket_send($this->aClientsInfo[$iKey]['resource'], $oData, strlen($oData), MSG_EOF);
+        $sData = serialize($oData);
+        socket_send($this->aClientsInfo[$iKey]['resource'], $sData, strlen($sData), MSG_EOF);
     }
     
     private function closeConnection($iKey)
