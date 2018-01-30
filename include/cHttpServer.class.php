@@ -83,9 +83,20 @@ class cHttpServer
                     socket_set_nonblock($aClient['resource']);
                     
                     $sBuffer = null;
-                    while(false !== @socket_recv($aClient['resource'], $sTempBuffer, 1024, 0)) 
+                    while(($iFlag = @socket_recv($aClient['resource'], $sTempBuffer, 1024, 0)) > 0) 
                     {
                         $sBuffer .= $sTempBuffer;
+                    }
+                    
+                    if($iFlag < 0)
+                    {
+                        // TODO error
+                        continue;
+                    }
+                    elseif($iFlag === 0)
+                    {
+                        // TODO Client disconnected
+                        continue;
                     }
 
                     if(empty($sBuffer) OR $sBuffer == '' OR $sBuffer == null)
