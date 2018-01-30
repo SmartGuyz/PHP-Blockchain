@@ -270,7 +270,7 @@ class cHttpServer
                                     break;
                                 }
                                 self::debug("handleBlockchainResponse()");
-                                $this->cBlockchain->handleBlockchainResponse($oMessageData);
+                                $this->cBlockchain->handleBlockchainResponse([$oMessageData]);
                                 break;
                             default:
                                 $this->sendPeers('', $iKey, 404);
