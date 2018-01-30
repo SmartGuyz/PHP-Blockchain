@@ -80,7 +80,7 @@ class cHttpServer
                 
                 if(in_array($aClient['resource'], $this->aRead))
                 {  
-                    socket_set_nonblock($aClient['resource']);
+                    //socket_set_nonblock($aClient['resource']);
                     
                     $sBuffer = null;
                     while(($iFlag = @socket_recv($aClient['resource'], $sTempBuffer, 1024, 0)) > 0) 
@@ -91,11 +91,13 @@ class cHttpServer
                     if($iFlag < 0)
                     {
                         // TODO error
+                        $this->closeConnection($iKey);
                         continue;
                     }
                     elseif($iFlag === 0)
                     {
                         // TODO Client disconnected
+                        $this->closeConnection($iKey);
                         continue;
                     }
 
