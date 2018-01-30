@@ -386,6 +386,22 @@ class cBlockchain extends cP2PServer
     }
     
     /**
+     * Get accumulated value of the difficulty
+     * 
+     * @param array $aBlockchain
+     * @return int
+     */
+    private function getAccumulatedDifficulty(array $aBlockchain): int
+    {
+        $iTotal = 0;
+        foreach(array_column($aBlockchain, 'difficulty') AS $iValue)
+        {
+            $iTotal += pow(2, $iValue);
+        }
+        return $iTotal;
+    }
+    
+    /**
      * Received blockchain is valid. Replacing current blockchain with received blockchain
      * 
      * Nakamoto consensus
