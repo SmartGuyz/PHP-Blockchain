@@ -19,17 +19,20 @@ class cHttpServer
     public function run(cBlockchain $oBlockchain)
     {
         $this->cBlockchain = $oBlockchain;
-        $this->cBlockchain->aClientsInfo = [];
+        
+        foreach($this->aIniValues AS $i => $aValue)
+        {
+            socket_getsockname($this->rMasterSocket[$i], $sServerIP, $sServerPort);
+            
+            $this->cBlockchain->aClientsInfo[] = ['resource' => $this->rMasterSocket[$i], 'ipaddr' => $sServerIP, 'port' => $sServerPort, 'protocol' => 'master'];
+        }
         
         while(true)
         {
             $this->aRead = [];
-            foreach($this->aIniValues AS $i => $aValue)
-            {
-                $this->aRead[] = $this->rMasterSocket[$i];
-            }
+            $this->aRead = array_column($this->cBlockchain->aClientsInfo, 'resource');
             
-            $this->aRead = array_merge($this->aRead, array_column($this->cBlockchain->aClientsInfo, 'resource'));
+            echo "1: ".print_r($this->aRead, true)."\r\n";
             
             // Zet blocking via socket_select
             $sNull = null;
@@ -70,28 +73,29 @@ class cHttpServer
             // Handle nieuwe input
             foreach($this->cBlockchain->aClientsInfo AS $iKey => $aClient)
             {
-                if(in_array($aClient['resource'], $this->aRead))
+                if($aClient['protocol'] == 'master')
                 {
-                    $sBuffer = '';
-                    while(false !== ($sTempBuffer = socket_read($aClient['resource'], 1024, PHP_BINARY_READ)))
+                    continue;
+                }
+                
+                if(in_array($aClient['resource'], $this->aRead))
+                {  
+                    socket_set_nonblock($aClient['resource']);
+                    
+                    $sBuffer = null;
+                    while(@socket_recv($aClient['resource'], $sTempBuffer, 1024, 0)) 
                     {
-                        if($sTempBuffer != null)
-                        {
-                            $sBuffer .= $sTempBuffer;
-                        }
-                        else
-                        {
-                            break 2;
-                        }
+                        $sBuffer .= $sTempBuffer;
                     }
-                    
-                    $sBuffer = trim($sBuffer);
-                    
-                    if(trim($sBuffer) == '')
+
+                    if(empty($sBuffer) OR $sBuffer == '' OR $sBuffer == null)
                     {
+                        self::debug("Closing connection for key {$iKey}");
                         $this->closeConnection($iKey);
                         continue;
                     }
+                    
+                    $sBuffer = trim($sBuffer);  
                     
                     self::debug("Received {$sBuffer}");
                     
