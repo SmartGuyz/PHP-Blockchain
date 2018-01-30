@@ -111,7 +111,7 @@ abstract class cP2PServer
         }
         else
         {
-            self::debug("handleBlockchainResponse() -> received blockchain is not longer than received blockchain. Do nothing");
+            self::debug("handleBlockchainResponse() -> received blockchain is not longer than own blockchain. Do nothing");
         }
     }
 }

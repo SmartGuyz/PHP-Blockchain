@@ -174,7 +174,7 @@ class cBlockchain extends cP2PServer
     {
         if($iDifficulty < 0)
         {
-            self::debug("Difficulty incorrect ({$iDifficulty})");
+            //self::debug("Difficulty incorrect ({$iDifficulty})");
             return true;
         }
         $sHashInBinary = (string)hex2bin($sHash);
@@ -412,8 +412,21 @@ class cBlockchain extends cP2PServer
     {
         if($this->isValidChain($aNewBlocks) && $this->getAccumulatedDifficulty($aNewBlocks) > $this->getAccumulatedDifficulty($this->aChain))
         {
+            // Clean DB
+            $this->cSQLiteBC->exec("DELETE FROM `blockchain`");
+            
+            // Refill DB
+            foreach($aNewBlocks AS $oBlock)
+            {
+                $this->addBlockToDatabase($oBlock);
+            }
+            
+            // Replace array
             $this->aChain = $aNewBlocks;
-            // TODO: Broadcast latest
+            self::debug("Chain has been replaced succesfull");
+            
+            // Broadcast latest
+            parent::broadcastLatest();
         }
     }
     
@@ -434,7 +447,8 @@ class cBlockchain extends cP2PServer
         
         $this->addBlockToChain($oNewBlock);
         
-        // TODO: Broadcast latest
+        // Broadcast latest
+        parent::broadcastLatest();
         
         return $oNewBlock;
     }
