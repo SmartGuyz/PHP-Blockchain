@@ -3,17 +3,15 @@ class cHttpServer
 {
     use tSocketServer;
     
-    protected $aClientsInfo, $aRead, $rMasterSocket;
+    protected $aRead, $rMasterSocket;
     private $iMaxClients, $iMaxRead, $cBlockchain, $aIniValues;
     
     public function __construct(array $aConfig)
     {
-        $this->aClientsInfo     = [];
+        $this->iMaxClients                  = 1024;
+        $this->iMaxRead                     = 1024;
         
-        $this->iMaxClients      = 1024;
-        $this->iMaxRead         = 1024;
-        
-        $this->aIniValues       = $aConfig;
+        $this->aIniValues                   = $aConfig;
         
         $this->createSocket($this->aIniValues);
     }
@@ -21,6 +19,7 @@ class cHttpServer
     public function run(cBlockchain $oBlockchain)
     {
         $this->cBlockchain = $oBlockchain;
+        $this->cBlockchain->aClientsInfo = [];
         
         while(true)
         {
@@ -30,7 +29,7 @@ class cHttpServer
                 $this->aRead[] = $this->rMasterSocket[$i];
             }
             
-            $this->aRead = array_merge($this->aRead, array_column($this->aClientsInfo, 'resource'));
+            $this->aRead = array_merge($this->aRead, array_column($this->cBlockchain->aClientsInfo, 'resource'));
             
             // Zet blocking via socket_select
             $sNull = null;
@@ -63,40 +62,38 @@ class cHttpServer
                         
                         self::debug("Incoming connection from {$sClientIP}:{$sClientPort} on {$sServerIP}:{$sServerPort} ({$aValue['name']})");
 
-                        $this->aClientsInfo[] = ['resource' => $rMsgSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => $aValue['name']];
-                        
-                        if($aValue['name'] == 'p2p')
-                        {
-                            end($this->aClientsInfo);
-                            $iLastArrayID = key($this->aClientsInfo);
-                            $this->cBlockchain->aPeers[$iLastArrayID] = ['resource' => $rMsgSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => $aValue['name']];
-                        }
+                        $this->cBlockchain->aClientsInfo[] = ['resource' => $rMsgSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => $aValue['name']];
                     }
                 }
             }
             
             // Handle nieuwe input
-            foreach($this->aClientsInfo AS $iKey => $aClient)
+            foreach($this->cBlockchain->aClientsInfo AS $iKey => $aClient)
             {
                 if(in_array($aClient['resource'], $this->aRead))
                 {
                     $sBuffer = '';
-                    while(false !== @socket_recv($aClient['resource'], $sTempBuffer, 1024, 0))
+                    while(false !== ($sTempBuffer = socket_read($aClient['resource'], 1024, PHP_BINARY_READ)))
                     {
                         if($sTempBuffer != null)
                         {
                             $sBuffer .= $sTempBuffer;
                         }
+                        else
+                        {
+                            break 2;
+                        }
                     }
                     
-                    if($sBuffer == null)
+                    $sBuffer = trim($sBuffer);
+                    
+                    if(trim($sBuffer) == '')
                     {
                         $this->closeConnection($iKey);
-                        $cBlockchain->closeConnection($iKey);
                         continue;
                     }
                     
-                    //self::debug("Received {$sBuffer}");
+                    self::debug("Received {$sBuffer}");
                     
                     if($aClient['protocol'] == 'http')
                     {
@@ -156,7 +153,7 @@ class cHttpServer
                                             {
                                                 $aTemp[] = "{$aTempClient['ipaddr']}:{$aTempClient['port']}";
                                             }
-                                            $this->send(((count($aTemp) == 0) ? ['error' => 'No peers found'] : $aTemp), $iKey);
+                                            $this->send(((!isset($aTemp) OR count($aTemp) == 0) ? ['error' => 'No peers found'] : $aTemp), $iKey);
                                             
                                             unset($aTemp);
                                             break;
@@ -208,12 +205,7 @@ class cHttpServer
                                                 $rSocket = $this->connectToPeer((object)$oBody->data);
                                                 if(is_resource($rSocket))
                                                 {                                                   
-                                                    $this->aClientsInfo[] = ['resource' => $rSocket, 'ipaddr' => $oBody->data->address, 'port' => $oBody->data->port, 'protocol' => 'p2p'];
-                                                    
-                                                    end($this->aClientsInfo);
-                                                    $iLastArrayID = key($this->aClientsInfo);
-                                                    
-                                                    $this->cBlockchain->aPeers[$iLastArrayID] = ['resource' => $rSocket, 'ipaddr' => $oBody->data->address, 'port' => $oBody->data->port, 'protocol' => 'p2p'];
+                                                    $this->cBlockchain->aClientsInfo[] = ['resource' => $rSocket, 'ipaddr' => $oBody->data->address, 'port' => $oBody->data->port, 'protocol' => 'p2p'];
                                                     
                                                     // Send message to the host that added the peer
                                                     $this->send(['message' => "Connected with {$oBody->data->address}:{$oBody->data->port} succesfull {$rSocket}"], $iKey);

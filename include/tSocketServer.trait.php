@@ -138,7 +138,7 @@ trait tSocketServer
         
         $sData = (($iHttpCode == 200) ? $sHeader.json_encode($aData, JSON_PRETTY_PRINT) : $sHeader);
         
-        socket_send($this->aClientsInfo[$iKey]['resource'], $sData, strlen($sData), MSG_EOF);
+        socket_send($this->cBlockchain->aClientsInfo[$iKey]['resource'], $sData, strlen($sData), MSG_EOF);
         
         $this->closeConnection($iKey);
     }
@@ -148,15 +148,15 @@ trait tSocketServer
         self::debug("Send {$oData->type} to peer");
         
         $sData = serialize($oData);
-        socket_send($this->aClientsInfo[$iKey]['resource'], $sData, strlen($sData), MSG_EOF);
+        socket_send($this->cBlockchain->aClientsInfo[$iKey]['resource'], $sData, strlen($sData), MSG_EOF);
     }
     
     private function closeConnection($iKey)
     {
-        self::debug("Disconnected client {$this->aClientsInfo[$iKey]['ipaddr']}...");
+        self::debug("Disconnected client {$this->cBlockchain->aClientsInfo[$iKey]['ipaddr']}...");
         
-        @socket_close($this->aClientsInfo[$iKey]['resource']);
-        unset($this->aClientsInfo[$iKey]);
+        @socket_close($this->cBlockchain->aClientsInfo[$iKey]['resource']);
+        unset($this->cBlockchain->aClientsInfo[$iKey]);
     }
 }
 ?>

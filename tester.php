@@ -1,31 +1,16 @@
 <?php
-$oData = new stdClass();
-$oData->index       = 0;
-$oData->hash        = "";
-$oData->prevHash    = "";
-$oData->timestamp   = 0;
-$oData->data        = "";
-$oData->difficulty  = 1;
-$oData->nonce       = 1;
+$aPostFiels['data'] = "test";
 
-$aBlockchain[] = $oData;
+$rCurl = curl_init();
 
-$oData = new stdClass();
-$oData->index       = 0;
-$oData->hash        = "";
-$oData->prevHash    = "";
-$oData->timestamp   = 0;
-$oData->data        = "";
-$oData->difficulty  = 1;
-$oData->nonce       = 1;
+curl_setopt($rCurl, CURLOPT_URL,"http://188.227.207.70:3001/mineBlock");
+curl_setopt($rCurl, CURLOPT_POST, true);
+curl_setopt($rCurl, CURLOPT_POSTFIELDS, json_encode($aPostFiels));
+curl_setopt($rCurl, CURLOPT_RETURNTRANSFER, true);
 
-$aBlockchain[] = $oData;
+$sOutput = curl_exec($rCurl);
 
-$iTotal = 0;
-foreach(array_column($aBlockchain, 'difficulty') AS $iValue)
-{
-    $iTotal += pow(2, $iValue);
-}
+print_r($sOutput);
 
-echo $iTotal;
+curl_close ($rCurl);
 ?>

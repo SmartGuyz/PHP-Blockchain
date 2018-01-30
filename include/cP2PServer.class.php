@@ -17,7 +17,7 @@ abstract class cP2PServer
         QUERY_TRANSACTION_POOL = 3,
         RESPONSE_TRANSACTION_POOL = 4;
     
-    public $aPeers;
+    public $aClientsInfo;
     
     public function responseLatestMsg()
     {
@@ -63,10 +63,13 @@ abstract class cP2PServer
     
     public function broadcast(stdClass $oData)
     {
-        foreach($this->aPeers AS $iKey => $aPeer)
+        foreach($this->aClientsInfo AS $iKey => $aPeer)
         {
-            $sData = serialize($oData);
-            socket_send($aPeer['resource'], $sData, strlen($sData), MSG_EOF);
+            if($aPeer['protocol'] == 'p2p')
+            {
+                $sData = serialize($oData);
+                socket_send($aPeer['resource'], $sData, strlen($sData), MSG_EOF);
+            }
         }
     }
     
@@ -112,17 +115,6 @@ abstract class cP2PServer
         else
         {
             self::debug("handleBlockchainResponse() -> received blockchain is not longer than own blockchain. Do nothing");
-        }
-    }
-    
-    public function closePeerConnection($iKey)
-    {
-        if(isset($this->aPeer[$iKey]))
-        {
-            self::debug("Disconnected peer {$this->aPeer[$iKey]['ipaddr']}...");
-            
-            @socket_close($this->aPeer[$iKey]['resource']);
-            unset($this->aPeer[$iKey]);
         }
     }
 }
