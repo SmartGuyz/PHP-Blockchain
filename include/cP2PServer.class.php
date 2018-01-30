@@ -39,7 +39,7 @@ abstract class cP2PServer
     
     public function broadcastLatest()
     {
-        $this->broadcast(responseLatestMsg());
+        $this->broadcast($this->responseLatestMsg());
     }
     
     public function queryChainLengthMsg()
