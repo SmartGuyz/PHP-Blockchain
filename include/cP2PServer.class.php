@@ -114,5 +114,16 @@ abstract class cP2PServer
             self::debug("handleBlockchainResponse() -> received blockchain is not longer than own blockchain. Do nothing");
         }
     }
+    
+    public function closePeerConnection($iKey)
+    {
+        if(isset($this->aPeer[$iKey]))
+        {
+            self::debug("Disconnected peer {$this->aPeer[$iKey]['ipaddr']}...");
+            
+            @socket_close($this->aPeer[$iKey]['resource']);
+            unset($this->aPeer[$iKey]);
+        }
+    }
 }
 ?>

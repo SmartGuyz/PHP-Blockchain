@@ -67,7 +67,9 @@ class cHttpServer
                         
                         if($aValue['name'] == 'p2p')
                         {
-                            $this->cBlockchain->aPeers[] = ['resource' => $rMsgSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => $aValue['name']];
+                            end($this->aClientsInfo);
+                            $iLastArrayID = key($this->aClientsInfo);
+                            $this->cBlockchain->aPeers[$iLastArrayID] = ['resource' => $rMsgSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => $aValue['name']];
                         }
                     }
                 }
@@ -78,12 +80,6 @@ class cHttpServer
             {
                 if(in_array($aClient['resource'], $this->aRead))
                 {
-                    /*if(false === ($sBuffer = socket_read($aClient['resource'], 1024, PHP_BINARY_READ)))
-                    {
-                        self::debug("socket_read() failed: reason: ".socket_strerror(socket_last_error($aClient['resource'])));
-                        break 2;
-                    }*/
-                    
                     $sBuffer = '';
                     while(false !== @socket_recv($aClient['resource'], $sTempBuffer, 1024, 0))
                     {
@@ -96,6 +92,7 @@ class cHttpServer
                     if($sBuffer == null)
                     {
                         $this->closeConnection($iKey);
+                        $cBlockchain->closeConnection($iKey);
                         continue;
                     }
                     
@@ -212,14 +209,16 @@ class cHttpServer
                                                 if(is_resource($rSocket))
                                                 {                                                   
                                                     $this->aClientsInfo[] = ['resource' => $rSocket, 'ipaddr' => $oBody->data->address, 'port' => $oBody->data->port, 'protocol' => 'p2p'];
-                                                    $this->cBlockchain->aPeers[] = ['resource' => $rSocket, 'ipaddr' => $oBody->data->address, 'port' => $oBody->data->port, 'protocol' => 'p2p'];
+                                                    
+                                                    end($this->aClientsInfo);
+                                                    $iLastArrayID = key($this->aClientsInfo);
+                                                    
+                                                    $this->cBlockchain->aPeers[$iLastArrayID] = ['resource' => $rSocket, 'ipaddr' => $oBody->data->address, 'port' => $oBody->data->port, 'protocol' => 'p2p'];
                                                     
                                                     // Send message to the host that added the peer
                                                     $this->send(['message' => "Connected with {$oBody->data->address}:{$oBody->data->port} succesfull {$rSocket}"], $iKey);
                                                     
                                                     // Send message to the newly added peer
-                                                    end($this->aClientsInfo);
-                                                    $iLastArrayID = key($this->aClientsInfo);
                                                     $this->sendPeers($this->cBlockchain->queryChainLengthMsg(), $iLastArrayID);
                                                 }
                                                 else
