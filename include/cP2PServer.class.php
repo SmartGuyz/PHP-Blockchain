@@ -20,7 +20,7 @@ abstract class cP2PServer
     {
         $oResponse = new stdClass();
         $oResponse->type = self::RESPONSE_BLOCKCHAIN;
-        $oResponse->data = json_encode($this->getLastBlock());
+        $oResponse->data = [serialize($this->getLastBlock())];
         
         return $oResponse;
     }

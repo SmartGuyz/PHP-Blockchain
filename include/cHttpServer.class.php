@@ -252,7 +252,7 @@ class cHttpServer
                         $oMessage = unserialize(trim($sBuffer));
                         
                         $iMessageType = (int)$oMessage->type;
-                        $oMessageData = @json_decode($oMessage->data);
+                        $oMessageData = unserialize($oMessage->data);
 
                         switch($iMessageType)
                         {
