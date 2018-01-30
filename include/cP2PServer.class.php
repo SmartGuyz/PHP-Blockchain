@@ -31,7 +31,7 @@ abstract class cP2PServer
     {
         $oResponse = new stdClass();
         $oResponse->type = self::RESPONSE_BLOCKCHAIN;
-        $oResponse->data = json_encode($this->getBlockchain());
+        $oResponse->data = serialize($this->getBlockchain());
         
         return $oResponse;
     }
@@ -72,14 +72,14 @@ abstract class cP2PServer
     {
         if(count($aReceivedBlocks) == 0)
         {
-            self::debug("handleBlockchainResponse() -> return 1");
+            self::debug("handleBlockchainResponse() -> received blockchain size of 0");
             return;
         }
         
         $oLatestBlockReceived = $aReceivedBlocks[count($aReceivedBlocks) - 1];
         if(!$this->isValidBlockStructure($oLatestBlockReceived))
         {
-            self::debug("handleBlockchainResponse() -> return 2");
+            self::debug("handleBlockchainResponse() -> block structuture not valid");
             return;
         }
         
@@ -109,8 +109,7 @@ abstract class cP2PServer
         }
         else
         {
-            //received blockchain is not longer than received blockchain. Do nothing
-            return;
+            self::debug("handleBlockchainResponse() -> received blockchain is not longer than received blockchain. Do nothing");
         }
     }
 }

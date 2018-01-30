@@ -256,10 +256,6 @@ class cHttpServer
                                 $this->sendPeers($this->cBlockchain->responseChainMsg(), $iKey);
                                 break;
                             case cP2PServer::RESPONSE_BLOCKCHAIN:
-                                if(!is_object($oMessageData))
-                                {
-                                    break;
-                                }
                                 self::debug("handleBlockchainResponse()");
                                 $this->cBlockchain->handleBlockchainResponse($oMessageData);
                                 break;
