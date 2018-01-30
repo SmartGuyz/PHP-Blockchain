@@ -98,7 +98,7 @@ abstract class cP2PServer
             {
                 // We have to query the chain from our peer
                 self::debug("handleBlockchainResponse() -> queryAllMsg()");
-                $this->broadcast(queryAllMsg());
+                $this->broadcast($this->queryAllMsg());
             }
             else
             {
