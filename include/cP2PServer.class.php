@@ -64,7 +64,8 @@ abstract class cP2PServer
     {
         foreach($this->aPeers AS $iKey => $aPeer)
         {
-            socket_send($aPeer['resource'], $oData, strlen($oData), MSG_EOF);
+            $sData = serialize($oData);
+            socket_send($aPeer['resource'], $sData, strlen($sData), MSG_EOF);
         }
     }
     
