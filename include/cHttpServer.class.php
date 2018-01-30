@@ -78,14 +78,21 @@ class cHttpServer
             {
                 if(in_array($aClient['resource'], $this->aRead))
                 {
-                    $sBuffer = "";
-                    do
+                    /*if(false === ($sBuffer = socket_read($aClient['resource'], 1024, PHP_BINARY_READ)))
                     {
-                        $sTempBuffer = socket_read($aClient['resource'], 2048, PHP_BINARY_READ);
-                        if($sTempBuffer != " ")
+                        self::debug("socket_read() failed: reason: ".socket_strerror(socket_last_error($aClient['resource'])));
+                        break 2;
+                    }*/
+                    
+                    $sBuffer = '';
+                    while(false !== socket_recv($aClient['resource'], $sTempBuffer, 1024,0))
+                    {
+                        if($sTempBuffer != null)
+                        {
                             $sBuffer .= $sTempBuffer;
-                    }
-                    while($sTempBuffer != " ");
+                        }
+                    };
+ 
                     
                     if($sBuffer == null)
                     {
