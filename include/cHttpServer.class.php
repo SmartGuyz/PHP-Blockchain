@@ -83,7 +83,7 @@ class cHttpServer
                     socket_set_nonblock($aClient['resource']);
                     
                     $sBuffer = null;
-                    while(@socket_recv($aClient['resource'], $sTempBuffer, 1024, 0)) 
+                    while(false !== @socket_recv($aClient['resource'], $sTempBuffer, 1024, 0)) 
                     {
                         $sBuffer .= $sTempBuffer;
                     }
