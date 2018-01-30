@@ -142,7 +142,7 @@ class cBlockchain extends cP2PServer
      * @param array $aBlockchain
      * @return int
      */
-    private function getAdjustedDifficulty(cBlock $oLastBlock, array $aBlockchain): int
+    public function getAdjustedDifficulty(cBlock $oLastBlock, array $aBlockchain): int
     {
         $oPrevAdjustmentBlock = (((count($aBlockchain) - self::DIFFICULTY_ADJUSTMENT_INTERVAL) > 0) ? $aBlockchain[count($aBlockchain) - self::DIFFICULTY_ADJUSTMENT_INTERVAL] : $aBlockchain[0]);
         $iTimeExpected = self::BLOCK_GENERATION_INTERVAL * self::DIFFICULTY_ADJUSTMENT_INTERVAL;
