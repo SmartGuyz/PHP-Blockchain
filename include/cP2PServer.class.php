@@ -8,6 +8,7 @@ abstract class cP2PServer
     abstract function isValidBlockStructure(cBlock $oBlock);
     abstract function addBlockToChain(cBlock $oNewBlock);
     abstract function replaceChain(array $aNewBlocks);
+    abstract function getAdjustedDifficulty(cBlock $oLastBlock, array $aBlockchain);
     
     const 
         QUERY_LATEST = 0,

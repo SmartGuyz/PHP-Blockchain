@@ -85,14 +85,13 @@ class cHttpServer
                     }*/
                     
                     $sBuffer = '';
-                    while(false !== socket_recv($aClient['resource'], $sTempBuffer, 1024,0))
+                    while(false !== @socket_recv($aClient['resource'], $sTempBuffer, 1024, 0))
                     {
                         if($sTempBuffer != null)
                         {
                             $sBuffer .= $sTempBuffer;
                         }
-                    };
- 
+                    }
                     
                     if($sBuffer == null)
                     {
