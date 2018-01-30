@@ -211,7 +211,8 @@ class cHttpServer
                                                     $this->send(['message' => "Connected with {$oBody->data->address}:{$oBody->data->port} succesfull {$rSocket}"], $iKey);
                                                     
                                                     // Send message to the newly added peer
-                                                    $this->sendPeers($this->cBlockchain->queryChainLengthMsg(), $iLastArrayID);
+                                                    end($this->cBlockchain->aClientsInfo);
+                                                    $this->sendPeers($this->cBlockchain->queryChainLengthMsg(), key($this->cBlockchain->aClientsInfo));
                                                 }
                                                 else
                                                 {
