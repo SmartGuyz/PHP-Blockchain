@@ -145,6 +145,8 @@ trait tSocketServer
     
     private function sendPeers($oData, $iKey)
     {
+        self::debug("Send {$oData->type} to peer");
+        
         $sData = serialize($oData);
         socket_send($this->aClientsInfo[$iKey]['resource'], $sData, strlen($sData), MSG_EOF);
     }

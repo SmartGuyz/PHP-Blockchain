@@ -146,22 +146,13 @@ class cHttpServer
                                             }
                                             break;
                                         case 'peers':      // Return all peers on the P2P server
-                                            $aP2PKeys = preg_grep("/p2p/", array_column($this->aClientsInfo, 'protocol'));
-                                            if($aP2PKeys !== false)
+                                            foreach($this->cBlockchain->aPeers AS $iTempClient => $aTempClient)
                                             {
-                                                foreach($aP2PKeys AS $iTempClient => $aTempClient)
-                                                {
-                                                    $aTemp[] = "{$aTempClient['ipaddr']}:{$aTempClient['port']}";
-                                                }
-                                                $this->send(((count($aTemp) == 0) ? ['error' => 'No peers found'] : $aTemp), $iKey);
-                                                
-                                                unset($aP2PKeys);
-                                                unset($aTemp);
+                                                $aTemp[] = "{$aTempClient['ipaddr']}:{$aTempClient['port']}";
                                             }
-                                            else
-                                            {
-                                                $this->send('', $iKey, 404);
-                                            }
+                                            $this->send(((count($aTemp) == 0) ? ['error' => 'No peers found'] : $aTemp), $iKey);
+                                            
+                                            unset($aTemp);
                                             break;
                                         case 'search':       // Searching the blockchain for data
                                             if(!isset($aArguments[2]))
@@ -270,7 +261,7 @@ class cHttpServer
                                     break;
                                 }
                                 self::debug("handleBlockchainResponse()");
-                                $this->cBlockchain->handleBlockchainResponse([$oMessageData]);
+                                $this->cBlockchain->handleBlockchainResponse($oMessageData);
                                 break;
                             default:
                                 $this->sendPeers('', $iKey, 404);

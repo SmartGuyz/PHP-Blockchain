@@ -22,7 +22,7 @@ abstract class cP2PServer
     {
         $oResponse = new stdClass();
         $oResponse->type = self::RESPONSE_BLOCKCHAIN;
-        $oResponse->data = serialize($this->getLastBlock());
+        $oResponse->data = serialize([$this->getLastBlock()]);
         
         return $oResponse;
     }
@@ -72,12 +72,14 @@ abstract class cP2PServer
     {
         if(count($aReceivedBlocks) == 0)
         {
+            self::debug("handleBlockchainResponse() -> return 1");
             return;
         }
         
         $oLatestBlockReceived = $aReceivedBlocks[count($aReceivedBlocks) - 1];
         if(!$this->isValidBlockStructure($oLatestBlockReceived))
         {
+            self::debug("handleBlockchainResponse() -> return 2");
             return;
         }
         
