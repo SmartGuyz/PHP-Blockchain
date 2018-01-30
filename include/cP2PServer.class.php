@@ -1,6 +1,8 @@
 <?php
 abstract class cP2PServer
 {
+    use tUtils;
+    
     abstract function getLastBlock();
     abstract function getBlockchain();
     abstract function isValidBlockStructure(cBlock $oBlock);
@@ -86,17 +88,20 @@ abstract class cP2PServer
             {
                 if($this->addBlockToChain($oLatestBlockReceived))
                 {
+                    self::debug("handleBlockchainResponse() -> broadcastLatest()");
                     $this->broadcastLatest();
                 }
             }
             elseif(count($aReceivedBlocks) === 1)
             {
                 // We have to query the chain from our peer
+                self::debug("handleBlockchainResponse() -> queryAllMsg()");
                 $this->broadcast(queryAllMsg());
             }
             else
             {
                 // Received blockchain is longer than current blockchain
+                self::debug("handleBlockchainResponse() -> replaceChain()");
                 $this->replaceChain($aReceivedBlocks);
             }
         }
