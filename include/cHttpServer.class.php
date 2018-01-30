@@ -32,8 +32,6 @@ class cHttpServer
             $this->aRead = [];
             $this->aRead = array_column($this->cBlockchain->aClientsInfo, 'resource');
             
-            echo "1: ".print_r($this->aRead, true)."\r\n";
-            
             // Zet blocking via socket_select
             $sNull = null;
             if(@socket_select($this->aRead, $sNull, $sNull, $sNull) < 1)
@@ -60,10 +58,7 @@ class cHttpServer
                         // Client info
                         socket_getpeername($rMsgSocket, $sClientIP, $sClientPort);
                         
-                        // Serv info
-                        socket_getsockname($rMsgSocket, $sServerIP, $sServerPort);
-                        
-                        self::debug("Incoming connection from {$sClientIP}:{$sClientPort} on {$sServerIP}:{$sServerPort} ({$aValue['name']})");
+                        self::debug("Incoming connection from {$sClientIP}:{$sClientPort} ({$aValue['name']})");
 
                         $this->cBlockchain->aClientsInfo[] = ['resource' => $rMsgSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => $aValue['name']];
                     }
@@ -80,8 +75,6 @@ class cHttpServer
                 
                 if(in_array($aClient['resource'], $this->aRead))
                 {  
-                    //socket_set_nonblock($aClient['resource']);
-                    
                     $sBuffer = null;
                     while(($iFlag = @socket_recv($aClient['resource'], $sTempBuffer, 1024, 0)) > 0) 
                     {
@@ -90,13 +83,13 @@ class cHttpServer
                     
                     if($iFlag < 0)
                     {
-                        // TODO error
+                        self::debug("socket_recv error, closing connection for client {$iKey}");
                         $this->closeConnection($iKey);
                         continue;
                     }
                     elseif($iFlag === 0)
                     {
-                        // TODO Client disconnected
+                        self::debug("Buffer empty, closing connection for client {$iKey}");
                         $this->closeConnection($iKey);
                         continue;
                     }
@@ -110,7 +103,7 @@ class cHttpServer
                     
                     $sBuffer = trim($sBuffer);  
                     
-                    self::debug("Received {$sBuffer}");
+                    //self::debug("Received {$sBuffer}");
                     
                     if($aClient['protocol'] == 'http')
                     {
@@ -166,9 +159,13 @@ class cHttpServer
                                             }
                                             break;
                                         case 'peers':      // Return all peers on the P2P server
-                                            foreach($this->cBlockchain->aPeers AS $iTempClient => $aTempClient)
+                                            $aPeersKeys = preg_grep("/p2p/i", array_column($this->cBlockchain->aClientsInfo, 'protocol'));
+                                            if($aPeersKeys !== false && !empty($aPeersKeys) && count($aPeersKeys) > 0)
                                             {
-                                                $aTemp[] = "{$aTempClient['ipaddr']}:{$aTempClient['port']}";
+                                                foreach($aPeersKeys AS $iTempClient => $aTempClient)
+                                                {
+                                                    $aTemp[] = "{$this->cBlockchain->aClientsInfo[$iTempClient]['ipaddr']}:{$this->cBlockchain->aClientsInfo[$iTempClient]['port']}";
+                                                }
                                             }
                                             $this->send(((!isset($aTemp) OR count($aTemp) == 0) ? ['error' => 'No peers found'] : $aTemp), $iKey);
                                             
