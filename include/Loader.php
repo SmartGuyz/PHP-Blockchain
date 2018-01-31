@@ -8,9 +8,19 @@ if(!ini_get('display_errors'))
 $sName = "PHPBC Node";
 $sLockFile = "/tmp/".strtolower($sName).".pid.lock";
 
-if(!function_exists('pcntl_fork'))
+if(!extension_loaded('pcntl'))
 {
     die(" * PCNTL functions are not available on this PHP installation, {$sName} won't run without PCNTL!\n");
+}
+
+if(!extension_loaded('gmp'))
+{
+    die(" * GMP functions are not available on this PHP installation, {$sName} won't run without GMP!\n");
+}
+
+if(!extension_loaded('sqlite3'))
+{
+    die(" * SQLite3 functions are not available on this PHP installation, {$sName} won't run without SQLite3!\n");
 }
 
 setlocale(LC_TIME, "nl_NL");
@@ -63,7 +73,7 @@ function default_autoloader($sClassName)
 	$iLastNsPos = strrpos($sClassName, '\\');
 	
 	if($iLastNsPos !== false)
-	{
+	{    
 		$sNamespace = substr($sClassName, 0, $iLastNsPos);
 		$sClassName = substr($sClassName, $iLastNsPos + 1);
 		$sFileName = str_replace('\\', DIRECTORY_SEPARATOR, $sNamespace).DIRECTORY_SEPARATOR;

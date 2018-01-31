@@ -1,7 +1,7 @@
 <?php
 class cBlockchain extends cP2PServer
 {
-    use tUtils;
+    use tUtils;    
     
     private $aChain, $oGenesisBlock, $cSQLiteBC;
     
@@ -477,8 +477,8 @@ class cBlockchain extends cP2PServer
      */
     private function getTransactionId(cTransaction $oTransaction): string
     {
-        $sTxInContent = join(array_map(function($oTxIns) { return $oTxIns->txOutId.$oTxIns->txOutIndex; }, $oTransaction->txIns));
-        $sTxOutContent = join(array_map(function($oTxOuts) { return $oTxOuts->address.$oTxOuts->amount; }, $oTransaction->txOuts));
+        $sTxInContent = join(array_map(function(cTxIn $oTxIns) { return $oTxIns->txOutId.$oTxIns->txOutIndex; }, $oTransaction->txIns));
+        $sTxOutContent = join(array_map(function(cTxOut $oTxOuts) { return $oTxOuts->address.$oTxOuts->amount; }, $oTransaction->txOuts));
         
         return hash('sha256', (string)$sTxInContent.(string)$sTxOutContent);
     }
@@ -487,46 +487,35 @@ class cBlockchain extends cP2PServer
     {
         if(!$this->isValidTransactionStructure($oTransaction))
         {
+            self::debug("Transaction structure is invalid in tx: {$oTransaction->id}");
             return false;
         }
-        elseif($this->getTransactionId($oTransaction) != $oTransaction->id)
+        
+        if($this->getTransactionId($oTransaction) != $oTransaction->id)
         {
+            self::debug("Invalid TX id: {$oTransaction->id}");
             return false;
         }
         
-        $bHasValidTxIns = array_reduce(array_map(function($oTxIns) use ($oTransaction, $aUnspentTxOut) { return $this->validateTxIn($oTxIns, $oTransaction, $aUnspentTxOut); }, $oTransaction->txIns), function($a, $b) { return $a && $b; }, true);
+        $bHasValidTxIns = (bool)array_reduce(array_map(function(cTxIn $oTxIns) use ($oTransaction, $aUnspentTxOut) { return $this->validateTxIn($oTxIns, $oTransaction, $aUnspentTxOut); }, $oTransaction->txIns), function($a, $b) { return $a && $b; }, true);
+        if(!$bHasValidTxIns)
+        {
+            self::debug("Some of the txIns are invalid in tx: {$oTransaction->id}");
+            return false;
+        }
         
-        /*
-         * const validateTransaction = (transaction: Transaction, aUnspentTxOuts: UnspentTxOut[]): boolean => {
-
-    const hasValidTxIns: boolean = transaction.txIns
-        .map((txIn) => validateTxIn(txIn, transaction, aUnspentTxOuts))
-        .reduce((a, b) => a && b, true);
-
-    if (!hasValidTxIns) {
-        console.log('some of the txIns are invalid in tx: ' + transaction.id);
-        return false;
-    }
-
-    const totalTxInValues: number = transaction.txIns
-        .map((txIn) => getTxInAmount(txIn, aUnspentTxOuts))
-        .reduce((a, b) => (a + b), 0);
-
-    const totalTxOutValues: number = transaction.txOuts
-        .map((txOut) => txOut.amount)
-        .reduce((a, b) => (a + b), 0);
-
-    if (totalTxOutValues !== totalTxInValues) {
-        console.log('totalTxOutValues !== totalTxInValues in tx: ' + transaction.id);
-        return false;
-    }
-
-    return true;
-};
-         */
+        $iToalTxInValues = (int)array_reduce(array_map(function(cTxIn $oTxIns) use ($aUnspentTxOut) { return $this->getTxInAmount($oTxIns, $aUnspentTxOut); }, $oTransaction->txIns), function($a, $b) { return ($a + $b); }, 0);
+        $iToalTxOutValues = (int)array_reduce(array_map(function(cTxOut $oTxOuts) { return $oTxOuts->amount; }, $oTransaction->txOuts), function($a, $b) { return ($a + $b); }, 0);
+        if($iToalTxOutValues !== $iToalTxInValues)
+        {
+            self::debug("totalTxOutValues !== totalTxInValues in tx: {$oTransaction->id}");
+            return false;
+        }
+        
+        return true;
     }
     
-    private function isValidTransactionStructure(cTransaction $oTransaction) 
+    private function isValidTransactionStructure(cTransaction $oTransaction): bool
     {
         if(gettype($oTransaction->id) !== "string")
         {
@@ -551,7 +540,7 @@ class cBlockchain extends cP2PServer
         return true;
     }
     
-    private function isValidTxInStructure(cTxIn $oTxIn)
+    private function isValidTxInStructure(cTxIn $oTxIn): bool
     {
         if($oTxIn == null)
         {
@@ -572,8 +561,13 @@ class cBlockchain extends cP2PServer
         return true;
     }
     
-    private function validateTxIn(cTxIn $oTxIn, cTransaction $oTransaction, array $aUnspentTxOut)
+    private function validateTxIn(cTxIn $oTxIn, cTransaction $oTransaction, array $aUnspentTxOut): bool
     {
+        // Switch to composer autoloader
+        spl_autoload_unregister('default_autoloader');
+        require_once __DIR__ . "/../vendor/autoload.php";
+
+        $ec = new \Elliptic\EC('secp256k1');
         /*
          * const validateTxIn = (txIn: TxIn, transaction: Transaction, aUnspentTxOuts: UnspentTxOut[]): boolean => {
     const referencedUTxOut: UnspentTxOut =
@@ -593,6 +587,21 @@ class cBlockchain extends cP2PServer
     return true;
 };
          */
+        
+        // Switch to default autoloader
+        spl_autoload_register('default_autoloader');
+        
+        return true;
+    }
+    
+    private function getTxAmount(cTxIn $oTxIn, array $aUnspentTxOut): int
+    {
+        return $this->findUnspentTxOut($oTxIn->txOutId, $oTxIn->txOutIndex, $aUnspentTxOut)->amount;
+    }
+    
+    private function findUnspentTxOut(string $sTransactionId, int $iIndex, array $aUnspentTxOut): cUnspentTxOut
+    {
+        return array_values(array_filter($aUnspentTxOut, function($oUnspentTxOut) use($sTransactionId, $iIndex) { return ($oUnspentTxOut->txOutId === $sTransactionId && $oUnspentTxOut->txOutIndex === $iIndex); }))[0];
     }
     
     /*
@@ -660,14 +669,6 @@ const validateCoinbaseTx = (transaction: Transaction, blockIndex: number): boole
         return false;
     }
     return true;
-};
-
-const getTxInAmount = (txIn: TxIn, aUnspentTxOuts: UnspentTxOut[]): number => {
-    return findUnspentTxOut(txIn.txOutId, txIn.txOutIndex, aUnspentTxOuts).amount;
-};
-
-const findUnspentTxOut = (transactionId: string, index: number, aUnspentTxOuts: UnspentTxOut[]): UnspentTxOut => {
-    return aUnspentTxOuts.find((uTxO) => uTxO.txOutId === transactionId && uTxO.txOutIndex === index);
 };
 
 const getCoinbaseTransaction = (address: string, blockIndex: number): Transaction => {

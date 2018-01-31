@@ -1,0 +1,106 @@
+[
+    {
+        "name": "simplito/bn-php",
+        "version": "1.0.1",
+        "version_normalized": "1.0.1.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/simplito/bn-php.git",
+            "reference": "060196a9438cc06e3f3b69d1501d1c9dfbc1390b"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/simplito/bn-php/zipball/060196a9438cc06e3f3b69d1501d1c9dfbc1390b",
+            "reference": "060196a9438cc06e3f3b69d1501d1c9dfbc1390b",
+            "shasum": ""
+        },
+        "require": {
+            "ext-gmp": "*"
+        },
+        "require-dev": {
+            "phpunit/phpunit": "*"
+        },
+        "time": "2017-10-27T09:17:30+00:00",
+        "type": "library",
+        "installation-source": "dist",
+        "autoload": {
+            "psr-4": {
+                "BN\\": "lib/"
+            }
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "MIT"
+        ],
+        "authors": [
+            {
+                "name": "Simplito Team",
+                "email": "s.smyczynski@simplito.com",
+                "homepage": "https://simplito.com"
+            }
+        ],
+        "description": "Big number implementation compatible with bn.js"
+    },
+    {
+        "name": "simplito/elliptic-php",
+        "version": "1.0.1",
+        "version_normalized": "1.0.1.0",
+        "source": {
+            "type": "git",
+            "url": "https://github.com/simplito/elliptic-php.git",
+            "reference": "f18586ff8c26830a9f5476e7dc8d2ab5623f80f9"
+        },
+        "dist": {
+            "type": "zip",
+            "url": "https://api.github.com/repos/simplito/elliptic-php/zipball/f18586ff8c26830a9f5476e7dc8d2ab5623f80f9",
+            "reference": "f18586ff8c26830a9f5476e7dc8d2ab5623f80f9",
+            "shasum": ""
+        },
+        "require": {
+            "ext-gmp": "*",
+            "simplito/bn-php": "~1.0.0"
+        },
+        "require-dev": {
+            "phpbench/phpbench": "@dev",
+            "phpunit/phpunit": "*"
+        },
+        "time": "2017-10-27T09:30:27+00:00",
+        "type": "library",
+        "installation-source": "dist",
+        "autoload": {
+            "psr-4": {
+                "Elliptic\\": "lib/"
+            }
+        },
+        "notification-url": "https://packagist.org/downloads/",
+        "license": [
+            "MIT"
+        ],
+        "authors": [
+            {
+                "name": "Simplito Team",
+                "email": "s.smyczynski@simplito.com",
+                "homepage": "https://simplito.com"
+            }
+        ],
+        "description": "Fast elliptic curve cryptography",
+        "homepage": "https://github.com/simplito/elliptic-php",
+        "keywords": [
+            "Curve25519",
+            "ECDSA",
+            "Ed25519",
+            "EdDSA",
+            "cryptography",
+            "curve",
+            "ecc",
+            "ecdh",
+            "elliptic",
+            "nistp192",
+            "nistp224",
+            "nistp256",
+            "nistp384",
+            "nistp521",
+            "secp256k1"
+        ]
+    }
+]
