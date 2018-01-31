@@ -74,7 +74,7 @@ class cBlockchain extends cP2PServer
             $bCheck = $this->cSQLiteBC->exec("INSERT INTO `blockchain` (`index`, `hash`, `prevHash`, `timestamp`, `data`, `difficulty`, `nonce`) VALUES ('{$oBlock->index}', '{$oBlock->hash}', '{$oBlock->prevHash}', '{$oBlock->timestamp}', '{$oBlock->data}', '{$oBlock->difficulty}', '{$oBlock->nonce}')");
             if($bCheck)
             {
-                self::debug("Block added to the chain (DB)");
+                //self::debug("Block added to the chain (DB)");
             }
             else
             {
