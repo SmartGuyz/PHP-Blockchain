@@ -24,7 +24,7 @@ elseif($_SERVER['argv'][1] == "start")
     else
     {
         // Load and start blockchain
-        $cBlockchain = new cBlockchain($cSQLiteBC);
+        $cBlockchain = new cBlockchain($cSQLiteBC, $aIniValues);
         
         $aPid = [];
         for($i = 0; $i < 1; $i++)

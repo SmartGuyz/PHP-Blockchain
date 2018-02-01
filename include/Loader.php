@@ -38,9 +38,9 @@ if(file_exists($sConfig))
     {
         die("The ini file is corrupt, variable \"datafile_blockchain\" is missing in \"database\"");
     }
-    elseif(!isset($aIniValues['database']['datafile_peers']))
+    elseif(!isset($aIniValues['database']['datafile_wallet']))
     {
-        die("The ini file is corrupt, variable \"datafile_peers\" is missing in \"database\"");
+        die("The ini file is corrupt, variable \"datafile_wallet\" is missing in \"database\"");
     }
     elseif(!isset($aIniValues['server']['http_address']))
     {

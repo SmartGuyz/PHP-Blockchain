@@ -8,10 +8,10 @@ class cHttpServer
     
     public function __construct(array $aConfig)
     {
-        $this->iMaxClients                  = 1024;
-        $this->iMaxRead                     = 1024;
+        $this->iMaxClients  = 1024;
+        $this->iMaxRead     = 1024;
         
-        $this->aIniValues                   = $aConfig;
+        $this->aIniValues   = $aConfig;
         
         $this->createSocket($this->aIniValues);
     }
@@ -197,6 +197,20 @@ class cHttpServer
                                                     $this->send('', $iKey, 404);
                                                 }
                                             }
+                                            break;
+                                        case 'balance':
+                                            break;
+                                        case 'address':
+                                            $sAddress = $this->cBlockchain->getPublicFromWallet();
+                                            $this->send(['address' => $sAddress], $iKey);
+                                            break;
+                                        case 'transaction':
+                                            break;
+                                        case 'mineRawBlock':
+                                            break;
+                                        case 'myUnspentTransactionOutputs':
+                                            break;
+                                        case 'unspentTransactionOutputs':
                                             break;
                                         default:
                                             $this->send('', $iKey, 404);
