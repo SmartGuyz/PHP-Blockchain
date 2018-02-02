@@ -23,18 +23,10 @@ trait tTransaction
             return false;
         }
         
-        $bHasValidTxIns = (bool)array_reduce(array_map(function(cTxIn $oTxIns) use ($oTransaction, $aUnspentTxOut) { return $this->validateTxIn($oTxIns, $oTransaction, $aUnspentTxOut); }, $oTransaction->txIns), function($a, $b) { return $a && $b; }, true);
+        $bHasValidTxIns = (bool)array_reduce(array_map(function(cTxIn $oTxIns) use ($oTransaction) { return $this->validateTxIn($oTxIns, $oTransaction); }, $oTransaction->txIns), function($a, $b) { return $a && $b; }, true);
         if(!$bHasValidTxIns)
         {
             self::debug("Some of the txIns are invalid in tx: {$oTransaction->id}");
-            return false;
-        }
-        
-        $iToalTxInValues = (int)array_reduce(array_map(function(cTxIn $oTxIns) use ($aUnspentTxOut) { return $this->getTxInAmount($oTxIns, $aUnspentTxOut); }, $oTransaction->txIns), function($a, $b) { return ($a + $b); }, 0);
-        $iToalTxOutValues = (int)array_reduce(array_map(function(cTxOut $oTxOuts) { return $oTxOuts->amount; }, $oTransaction->txOuts), function($a, $b) { return ($a + $b); }, 0);
-        if($iToalTxOutValues !== $iToalTxInValues)
-        {
-            self::debug("totalTxOutValues !== totalTxInValues in tx: {$oTransaction->id}");
             return false;
         }
         
@@ -56,10 +48,6 @@ trait tTransaction
             return false;
         }
         elseif(!array_reduce(array_map([$this, 'isValidTxInStructure'], $oTransaction->txIns), function($a, $b) { return $a && $b; }, true))
-        {
-            return false;
-        }
-        elseif(!array_reduce(array_map([$this, 'isValidTxInStructure'], $oTransaction->txOuts), function($a, $b) { return $a && $b; }, true))
         {
             return false;
         }
@@ -87,18 +75,11 @@ trait tTransaction
         return true;
     }
     
-    private function validateTxIn(cTxIn $oTxIn, cTransaction $oTransaction, array $aUnspentTxOut): bool
+    private function validateTxIn(cTxIn $oTxIn, cTransaction $oTransaction): bool
     {
-        $oReferencedUTxOut = array_values(array_filter($aUnspentTxOut, function($oUnspentTxOut) use($oTxIn) { return ($oUnspentTxOut->txOutId === $oTxIn->txOutId && $oUnspentTxOut->txOutIndex === $oTxIn->txOutIndex); }))[0];
-        if($oReferencedUTxOut == null)
-        {
-            self::debug("referenced txOut not found: ".json_encode($oTxIn));
-            return false;
-        }
-        
-        $sAddress           = $oReferencedUTxOut->address;
-        $sKey               = $this->cEC->keyFromPublic($sAddress, 'hex');
-        $bValidSignature    = $this->cEC->verify($oTransaction->id, $oTxIn->signature);
+        $sAddress           = $oTxIn->signature->address;
+        $oKey               = $this->cEC->keyFromPublic($sAddress, 'hex');
+        $bValidSignature    = $oKey->verify($oTransaction->id, $oTxIn->signature);
         if(!$bValidSignature)
         {
             self::debug("invalid txIn signature: {$oTxIn->signature} address {$sAddress}");
@@ -146,6 +127,61 @@ trait tTransaction
         return $sSignature;
     }
     
+    public function sendTransaction(string $sReceiveAddress, stdClass $oDataObject)
+    {
+        $oTx = $this->createTransaction($sReceiveAddress, $oDataObject, $this->getPrivateFromWallet(), $this->getTransactionPool());
+        
+        // TODO addToTransactionPool(tx, getUnspentTxOuts());
+        // TODO broadCastTransactionPool();
+        
+        return $oTx;
+    }
+    
+    private function createTransaction(string $sReceiveAddress, stdClass $oDataObject, string $sPrivateKey, array $aTxPool): cTransaction
+    {
+        $sMyAddress = $this->getPublicKey($sPrivateKey);
+        
+        $cTxIn = new cTxIn();
+        $cTxIn->txOutId = unspentTxOut.txOutId;
+        $cTxIn->txOutIndex = unspentTxOut.txOutIndex;
+        return $cTxIn;
+        /*
+         * const createTransaction = (receiverAddress: string, amount: number, privateKey: string,
+         unspentTxOuts: UnspentTxOut[], txPool: Transaction[]): Transaction => {
+         
+         console.log('txPool: %s', JSON.stringify(txPool));
+         const myAddress: string = getPublicKey(privateKey);
+         const myUnspentTxOutsA = unspentTxOuts.filter((uTxO: UnspentTxOut) => uTxO.address === myAddress);
+         
+         const myUnspentTxOuts = filterTxPoolTxs(myUnspentTxOutsA, txPool);
+         
+         // filter from unspentOutputs such inputs that are referenced in pool
+         const {includedUnspentTxOuts, leftOverAmount} = findTxOutsForAmount(amount, myUnspentTxOuts);
+         
+         const toUnsignedTxIn = (unspentTxOut: UnspentTxOut) => {
+         const txIn: TxIn = new TxIn();
+         txIn.txOutId = unspentTxOut.txOutId;
+         txIn.txOutIndex = unspentTxOut.txOutIndex;
+         return txIn;
+         };
+         
+         const unsignedTxIns: TxIn[] = includedUnspentTxOuts.map(toUnsignedTxIn);
+         
+         const tx: Transaction = new Transaction();
+         tx.txIns = unsignedTxIns;
+         tx.txOuts = createTxOuts(receiverAddress, myAddress, amount, leftOverAmount);
+         tx.id = getTransactionId(tx);
+         
+         tx.txIns = tx.txIns.map((txIn: TxIn, index: number) => {
+         txIn.signature = signTxIn(tx, index, privateKey, unspentTxOuts);
+         return txIn;
+         });
+         
+         return tx;
+         };
+         */
+    }
+    
     
     /*
      const validateBlockTransactions = (aTransactions: Transaction[], aUnspentTxOuts: UnspentTxOut[], blockIndex: number): boolean => {
@@ -186,47 +222,6 @@ trait tTransaction
      .includes(true);
      };
      
-     const validateCoinbaseTx = (transaction: Transaction, blockIndex: number): boolean => {
-     if (transaction == null) {
-     console.log('the first transaction in the block must be coinbase transaction');
-     return false;
-     }
-     if (getTransactionId(transaction) !== transaction.id) {
-     console.log('invalid coinbase tx id: ' + transaction.id);
-     return false;
-     }
-     if (transaction.txIns.length !== 1) {
-     console.log('one txIn must be specified in the coinbase transaction');
-     return;
-     }
-     if (transaction.txIns[0].txOutIndex !== blockIndex) {
-     console.log('the txIn signature in coinbase tx must be the block height');
-     return false;
-     }
-     if (transaction.txOuts.length !== 1) {
-     console.log('invalid number of txOuts in coinbase transaction');
-     return false;
-     }
-     if (transaction.txOuts[0].amount !== COINBASE_AMOUNT) {
-     console.log('invalid coinbase amount in coinbase transaction');
-     return false;
-     }
-     return true;
-     };
-     
-     const getCoinbaseTransaction = (address: string, blockIndex: number): Transaction => {
-     const t = new Transaction();
-     const txIn: TxIn = new TxIn();
-     txIn.signature = '';
-     txIn.txOutId = '';
-     txIn.txOutIndex = blockIndex;
-     
-     t.txIns = [txIn];
-     t.txOuts = [new TxOut(address, COINBASE_AMOUNT)];
-     t.id = getTransactionId(t);
-     return t;
-     };
-     
      const updateUnspentTxOuts = (aTransactions: Transaction[], aUnspentTxOuts: UnspentTxOut[]): UnspentTxOut[] => {
      const newUnspentTxOuts: UnspentTxOut[] = aTransactions
      .map((t) => {
@@ -255,29 +250,6 @@ trait tTransaction
      return updateUnspentTxOuts(aTransactions, aUnspentTxOuts);
      };
      
-     const toHexString = (byteArray): string => {
-     return Array.from(byteArray, (byte: any) => {
-     return ('0' + (byte & 0xFF).toString(16)).slice(-2);
-     }).join('');
-     };
-     
-     const isValidTxOutStructure = (txOut: TxOut): boolean => {
-     if (txOut == null) {
-     console.log('txOut is null');
-     return false;
-     } else if (typeof txOut.address !== 'string') {
-     console.log('invalid address type in txOut');
-     return false;
-     } else if (!isValidAddress(txOut.address)) {
-     console.log('invalid TxOut address');
-     return false;
-     } else if (typeof txOut.amount !== 'number') {
-     console.log('invalid amount type in txOut');
-     return false;
-     } else {
-     return true;
-     }
-     };
      
      // valid address is a valid ecdsa public key in the 04 + X-coordinate + Y-coordinate format
      const isValidAddress = (address: string): boolean => {

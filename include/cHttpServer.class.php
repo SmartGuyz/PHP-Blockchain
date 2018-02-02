@@ -247,6 +247,26 @@ class cHttpServer
                                                     $this->send(['message' => "Connected with {$oBody->data->address}:{$oBody->data->port} failed"], $iKey);
                                                 }
                                                 break;
+                                            case 'sendTransaction':
+                                                try 
+                                                {
+                                                    $sToAddress = ((isset($oBody->toAddress)) ? $oBody->toAddress : '');
+                                                    $oDataObject = ((isset($oBody->dataObject)) ? json_decode($oBody->dataObject) : '');
+                                                    
+                                                    if(empty($sToAddress) || empty($oDataObject))
+                                                    {
+                                                        throw new Exception('invalid toAddress or dataObject');
+                                                    }
+                                                    
+                                                    $sResponse = $this->cBlockchain->sendTransaction($sToAddress, $oDataObject);
+                                                    
+                                                    $this->send([$sResponse], $iKey);
+                                                }
+                                                catch(Exception $e)
+                                                {
+                                                    $this->send([$e->getMessage()], $iKey, 400);
+                                                }
+                                                break;
                                             default:
                                                 $this->send('', $iKey, 404);
                                                 break;

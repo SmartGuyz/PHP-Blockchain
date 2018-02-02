@@ -37,17 +37,5 @@ trait tWallet
         $oKey = $this->cEC->keyFromPrivate($sPrivateKey, 'hex');
         return $oKey->getPublic(false, 'hex');
     }
-    
-    public function getBalance(string $sAddress, array $aUnspentTxOut): int
-    {
-        
-        /*
-         *     const getBalance = (address: string, unspentTxOuts: UnspentTxOut[]): number => {
-        return _(findUnspentTxOuts(address, unspentTxOuts))
-        .map((uTxO: UnspentTxOut) => uTxO.amount)
-        .sum();
-    };
-         */
-    }
 }
 ?>

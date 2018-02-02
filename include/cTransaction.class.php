@@ -10,10 +10,5 @@ class cTransaction
      * @var array
      */
     public $txIns = [];
-    
-    /**
-     * @var array
-     */
-    public $txOuts = [];
 }
 ?>
