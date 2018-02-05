@@ -312,7 +312,7 @@ class cHttpServer
                                 self::debug("QUERY_TRANSACTION_POOL: responseTransactionPoolMsg()");
                                 $this->cBlockchain->responseTransactionPoolMsg();
                                 break;
-                            case MessageType.RESPONSE_TRANSACTION_POOL:
+                            case cP2PServer::RESPONSE_TRANSACTION_POOL:
                                 foreach($oMessageData AS $oTransaction)
                                 {
                                     try 
