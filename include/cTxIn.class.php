@@ -14,6 +14,11 @@ class cTxIn
     /**
      * @var string
      */
+    public $fromAddress;
+    
+    /**
+     * @var string
+     */
     public $toAddress;
     
     /**

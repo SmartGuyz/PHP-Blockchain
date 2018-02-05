@@ -5,7 +5,7 @@ trait tTransaction
     
     private function getTransactionId(cTransaction $oTransaction): string
     {
-        $sTxInContent = join(array_map(function(cTxIn $oTxIns) { return $oTxIns->toAddress.serialize($oTxIns->dataObject).$oTxIns->time; }, $oTransaction->txIns));
+        $sTxInContent = join(array_map(function(cTxIn $oTxIns) { return $oTxIns->fromAddress.$oTxIns->toAddress.$oTxIns->time.serialize($oTxIns->dataObject); }, $oTransaction->txIns));
         
         return hash('sha256', (string)$sTxInContent);
     }
@@ -69,6 +69,10 @@ trait tTransaction
         {
             return false;
         }
+        elseif(gettype($oTxIn->fromAddress) !== "string")
+        {
+            return false;
+        }
         elseif(gettype($oTxIn->dataObject) !== "object")
         {
             return false;
@@ -78,12 +82,12 @@ trait tTransaction
     
     private function validateTxIn(cTxIn $oTxIn, cTransaction $oTransaction): bool
     {
-        $sMyAddress         = $this->getPublicFromWallet();
-        $oKey               = $this->cEC->keyFromPublic($sMyAddress, 'hex');
+        $sFromAddress       = $oTxIn->fromAddress;
+        $oKey               = $this->cEC->keyFromPublic($sFromAddress, 'hex');
         $bValidSignature    = $oKey->verify($oTransaction->id, $oTxIn->signature);
         if(!$bValidSignature)
         {
-            self::debug("invalid txIn signature: {$oTxIn->signature} address {$sAddress}");
+            self::debug("invalid txIn signature: {$oTxIn->signature} address {$sFromAddress}");
             return false;
         }
         return true;
@@ -116,6 +120,7 @@ trait tTransaction
         $sMyAddress = $this->getPublicKey($sPrivateKey);
         
         $cTxIn = new cTxIn();
+        $cTxIn->fromAddress = $this->getPublicFromWallet();
         $cTxIn->toAddress = $sReceiveAddress;
         $cTxIn->dataObject = $oDataObject;
         $cTxIn->time = time();
