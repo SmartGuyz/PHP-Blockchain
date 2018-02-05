@@ -134,9 +134,9 @@ trait tSocketServer
         $sHeader .= "Date: Fri, 31 Dec 1999 23:59:59 GMT\r\n";
         $sHeader .= "Server: PHPBC/1.0\r\n";
         $sHeader .= "X-Powered-By: PHP/".phpversion()."\r\n";
-        $sHeader .= (($iHttpCode == 200) ? "Content-Type: application/json; charset=utf-8\r\n\r\n" : "Content-Type: text/html; charset=utf-8\r\n");
+        $sHeader .= (($aData != '') ? "Content-Type: application/json; charset=utf-8\r\n\r\n" : "Content-Type: text/html; charset=utf-8\r\n");
         
-        $sData = (($iHttpCode == 200) ? $sHeader.json_encode($aData, JSON_PRETTY_PRINT) : $sHeader);
+        $sData = (($aData != '') ? $sHeader.json_encode($aData, JSON_PRETTY_PRINT) : $sHeader);
         
         socket_send($this->cBlockchain->aClientsInfo[$iKey]['resource'], $sData, strlen($sData), MSG_EOF);
         

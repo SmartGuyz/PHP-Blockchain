@@ -1,15 +1,16 @@
 <?php
 trait tTransaction
 {
+    use tTransactionPool;
+    
     private function getTransactionId(cTransaction $oTransaction): string
     {
-        $sTxInContent = join(array_map(function(cTxIn $oTxIns) { return $oTxIns->txOutId.$oTxIns->txOutIndex; }, $oTransaction->txIns));
-        $sTxOutContent = join(array_map(function(cTxOut $oTxOuts) { return $oTxOuts->address.$oTxOuts->amount; }, $oTransaction->txOuts));
+        $sTxInContent = join(array_map(function(cTxIn $oTxIns) { return $oTxIns->toAddress.serialize($oTxIns->dataObject); }, $oTransaction->txIns));
         
-        return hash('sha256', (string)$sTxInContent.(string)$sTxOutContent);
+        return hash('sha256', (string)$sTxInContent);
     }
     
-    private function validateTransaction(cTransaction $oTransaction, array $aUnspentTxOut) : bool
+    private function validateTransaction(cTransaction $oTransaction) : bool
     {
         if(!$this->isValidTransactionStructure($oTransaction))
         {
@@ -43,10 +44,6 @@ trait tTransaction
         {
             return false;
         }
-        elseif(gettype($oTransaction->txOuts) !== "array")
-        {
-            return false;
-        }
         elseif(!array_reduce(array_map([$this, 'isValidTxInStructure'], $oTransaction->txIns), function($a, $b) { return $a && $b; }, true))
         {
             return false;
@@ -64,11 +61,11 @@ trait tTransaction
         {
             return false;
         }
-        elseif(gettype($oTxIn->txOutId) !== "string")
+        elseif(gettype($oTxIn->toAddress) !== "string")
         {
             return false;
         }
-        elseif(gettype($oTxIn->txOutIndex) !== "integer")
+        elseif(gettype($oTxIn->dataObject) !== "object")
         {
             return false;
         }
@@ -77,7 +74,7 @@ trait tTransaction
     
     private function validateTxIn(cTxIn $oTxIn, cTransaction $oTransaction): bool
     {
-        $sAddress           = $oTxIn->signature->address;
+        $sAddress           = $oTxIn->toAddress;
         $oKey               = $this->cEC->keyFromPublic($sAddress, 'hex');
         $bValidSignature    = $oKey->verify($oTransaction->id, $oTxIn->signature);
         if(!$bValidSignature)
@@ -88,41 +85,16 @@ trait tTransaction
         return true;
     }
     
-    private function getTxAmount(cTxIn $oTxIn, array $aUnspentTxOut): int
-    {
-        return $this->findUnspentTxOut($oTxIn->txOutId, $oTxIn->txOutIndex, $aUnspentTxOut)->amount;
-    }
-    
-    private function findUnspentTxOut(string $sTransactionId, int $iIndex, array $aUnspentTxOut): cUnspentTxOut
-    {
-        return array_values(array_filter($aUnspentTxOut, function($oUnspentTxOut) use($sTransactionId, $iIndex) { return ($oUnspentTxOut->txOutId === $sTransactionId && $oUnspentTxOut->txOutIndex === $iIndex); }))[0];
-    }
-    
     private function getPublicKey(string $sPrivateKey): string
     {
         // ec.keyFromPrivate(aPrivateKey, 'hex').getPublic().encode('hex');
         return $this->cEC->keyFromPrivate($sPrivateKey, 'hex')->getPublic(false, 'hex');
     }
     
-    private function signTxIn(cTransaction $oTransaction, int $iTxInIndex, string $sPrivateKey, array $aUnspentTxOut)
+    private function signTxIn(string $sTxIn, string $sPrivateKey)
     {
-        $oTxIn = $oTransaction->txIns[$iTxInIndex];
-        
-        $sDataToSign = $oTransaction->id;
-        $oReferencedUnspentTxOut = $this->findUnspentTxOut($oTxIn->txOutId, $oTxIn->txOutIndex, $aUnspentTxOut);
-        if($oReferencedUnspentTxOut == null)
-        {
-            self::debug("could not find referenced txOut");
-        }
-        $sReferencedAddress = $oReferencedUnspentTxOut->address;
-        
-        if($this->getPublicKey($sPrivateKey) !== $sReferencedAddress)
-        {
-            self::debug("trying to sign an input with private key that does not match the address that is referenced in txIn");
-        }
-        
-        $sKey = $this->cEC->keyFromPrivate($sPrivateKey, 'hex');
-        $sSignature = $this->cEC->sign($sDataToSign)->toDER('hex');
+        $oKey = $this->cEC->keyFromPrivate($sPrivateKey, 'hex');
+        $sSignature = $oKey->sign($sTxIn)->toDER('hex');
         
         return $sSignature;
     }
@@ -130,8 +102,7 @@ trait tTransaction
     public function sendTransaction(string $sReceiveAddress, stdClass $oDataObject)
     {
         $oTx = $this->createTransaction($sReceiveAddress, $oDataObject, $this->getPrivateFromWallet(), $this->getTransactionPool());
-        
-        // TODO addToTransactionPool(tx, getUnspentTxOuts());
+        $this->addToTransactionPool($oTx);
         // TODO broadCastTransactionPool();
         
         return $oTx;
@@ -142,44 +113,15 @@ trait tTransaction
         $sMyAddress = $this->getPublicKey($sPrivateKey);
         
         $cTxIn = new cTxIn();
-        $cTxIn->txOutId = unspentTxOut.txOutId;
-        $cTxIn->txOutIndex = unspentTxOut.txOutIndex;
-        return $cTxIn;
-        /*
-         * const createTransaction = (receiverAddress: string, amount: number, privateKey: string,
-         unspentTxOuts: UnspentTxOut[], txPool: Transaction[]): Transaction => {
-         
-         console.log('txPool: %s', JSON.stringify(txPool));
-         const myAddress: string = getPublicKey(privateKey);
-         const myUnspentTxOutsA = unspentTxOuts.filter((uTxO: UnspentTxOut) => uTxO.address === myAddress);
-         
-         const myUnspentTxOuts = filterTxPoolTxs(myUnspentTxOutsA, txPool);
-         
-         // filter from unspentOutputs such inputs that are referenced in pool
-         const {includedUnspentTxOuts, leftOverAmount} = findTxOutsForAmount(amount, myUnspentTxOuts);
-         
-         const toUnsignedTxIn = (unspentTxOut: UnspentTxOut) => {
-         const txIn: TxIn = new TxIn();
-         txIn.txOutId = unspentTxOut.txOutId;
-         txIn.txOutIndex = unspentTxOut.txOutIndex;
-         return txIn;
-         };
-         
-         const unsignedTxIns: TxIn[] = includedUnspentTxOuts.map(toUnsignedTxIn);
-         
-         const tx: Transaction = new Transaction();
-         tx.txIns = unsignedTxIns;
-         tx.txOuts = createTxOuts(receiverAddress, myAddress, amount, leftOverAmount);
-         tx.id = getTransactionId(tx);
-         
-         tx.txIns = tx.txIns.map((txIn: TxIn, index: number) => {
-         txIn.signature = signTxIn(tx, index, privateKey, unspentTxOuts);
-         return txIn;
-         });
-         
-         return tx;
-         };
-         */
+        $cTxIn->toAddress = $sReceiveAddress;
+        $cTxIn->dataObject = $oDataObject;
+        
+        $cTransaction = new cTransaction();
+        $cTransaction->txIns[] = $cTxIn;
+        $cTransaction->id = $sTxID = $this->getTransactionId($cTransaction);        
+        $cTransaction->txIns = array_map(function(cTxIn $oTxIns) use($sPrivateKey, $sTxID) { $oTxIns->signature = $this->signTxIn($sTxID, $sPrivateKey); return $oTxIns; }, $cTransaction->txIns);
+
+        return $cTransaction;
     }
     
     

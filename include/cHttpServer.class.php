@@ -20,6 +20,8 @@ class cHttpServer
     {
         $this->cBlockchain = $oBlockchain;
         
+        self::debug("Local wallet address is: {$this->cBlockchain->getPublicFromWallet()}");
+        
         foreach($this->aIniValues AS $i => $aValue)
         {
             socket_getsockname($this->rMasterSocket[$i], $sServerIP, $sServerPort);
@@ -250,12 +252,12 @@ class cHttpServer
                                             case 'sendTransaction':
                                                 try 
                                                 {
-                                                    $sToAddress = ((isset($oBody->toAddress)) ? $oBody->toAddress : '');
-                                                    $oDataObject = ((isset($oBody->dataObject)) ? json_decode($oBody->dataObject) : '');
+                                                    $sToAddress = ((isset($oBody->data->toAddress)) ? $oBody->data->toAddress : '');
+                                                    $oDataObject = ((isset($oBody->data->dataObject)) ? unserialize($oBody->data->dataObject) : '');
                                                     
                                                     if(empty($sToAddress) || empty($oDataObject))
                                                     {
-                                                        throw new Exception('invalid toAddress or dataObject');
+                                                        throw new Exception("invalid toAddress ({$oBody->data->toAddress}) or dataObject ({$oBody->data->dataObject})");
                                                     }
                                                     
                                                     $sResponse = $this->cBlockchain->sendTransaction($sToAddress, $oDataObject);
