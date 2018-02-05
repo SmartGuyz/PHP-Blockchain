@@ -20,8 +20,6 @@ class cHttpServer
     {
         $this->cBlockchain = $oBlockchain;
         
-        self::debug("Local wallet address is: {$this->cBlockchain->getPublicFromWallet()}");
-        
         foreach($this->aIniValues AS $i => $aValue)
         {
             socket_getsockname($this->rMasterSocket[$i], $sServerIP, $sServerPort);
@@ -309,6 +307,24 @@ class cHttpServer
                             case cP2PServer::RESPONSE_BLOCKCHAIN:
                                 self::debug("RESPONSE_BLOCKCHAIN: handleBlockchainResponse()");
                                 $this->cBlockchain->handleBlockchainResponse($oMessageData);
+                                break;  
+                            case cP2PServer::QUERY_TRANSACTION_POOL:
+                                self::debug("QUERY_TRANSACTION_POOL: responseTransactionPoolMsg()");
+                                $this->cBlockchain->responseTransactionPoolMsg();
+                                break;
+                            case MessageType.RESPONSE_TRANSACTION_POOL:
+                                foreach($oMessageData AS $oTransaction)
+                                {
+                                    try 
+                                    {
+                                        $this->cBlockchain->handleReceivedTransaction($oTransaction);
+                                        $this->cBlockchain->broadCastTransactionPool();
+                                    }
+                                    catch(Exception $e)
+                                    {
+                                        self::debug("Error RESPONSE_TRANSACTION_POOL: {$e->getMessage()}");
+                                    }
+                                }
                                 break;
                             default:
                                 $this->sendPeers('', $iKey, 404);

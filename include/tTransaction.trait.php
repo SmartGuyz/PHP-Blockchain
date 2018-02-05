@@ -5,7 +5,7 @@ trait tTransaction
     
     private function getTransactionId(cTransaction $oTransaction): string
     {
-        $sTxInContent = join(array_map(function(cTxIn $oTxIns) { return $oTxIns->toAddress.serialize($oTxIns->dataObject); }, $oTransaction->txIns));
+        $sTxInContent = join(array_map(function(cTxIn $oTxIns) { return $oTxIns->toAddress.serialize($oTxIns->dataObject).$oTxIns->time; }, $oTransaction->txIns));
         
         return hash('sha256', (string)$sTxInContent);
     }
@@ -61,6 +61,10 @@ trait tTransaction
         {
             return false;
         }
+        elseif(gettype($oTxIn->time) !== "integer")
+        {
+            return false;
+        }
         elseif(gettype($oTxIn->toAddress) !== "string")
         {
             return false;
@@ -74,8 +78,8 @@ trait tTransaction
     
     private function validateTxIn(cTxIn $oTxIn, cTransaction $oTransaction): bool
     {
-        $sAddress           = $oTxIn->toAddress;
-        $oKey               = $this->cEC->keyFromPublic($sAddress, 'hex');
+        $sMyAddress         = $this->getPublicFromWallet();
+        $oKey               = $this->cEC->keyFromPublic($sMyAddress, 'hex');
         $bValidSignature    = $oKey->verify($oTransaction->id, $oTxIn->signature);
         if(!$bValidSignature)
         {
@@ -87,7 +91,6 @@ trait tTransaction
     
     private function getPublicKey(string $sPrivateKey): string
     {
-        // ec.keyFromPrivate(aPrivateKey, 'hex').getPublic().encode('hex');
         return $this->cEC->keyFromPrivate($sPrivateKey, 'hex')->getPublic(false, 'hex');
     }
     
@@ -103,7 +106,7 @@ trait tTransaction
     {
         $oTx = $this->createTransaction($sReceiveAddress, $oDataObject, $this->getPrivateFromWallet(), $this->getTransactionPool());
         $this->addToTransactionPool($oTx);
-        // TODO broadCastTransactionPool();
+        $this->broadCastTransactionPool();
         
         return $oTx;
     }
@@ -115,10 +118,11 @@ trait tTransaction
         $cTxIn = new cTxIn();
         $cTxIn->toAddress = $sReceiveAddress;
         $cTxIn->dataObject = $oDataObject;
+        $cTxIn->time = time();
         
         $cTransaction = new cTransaction();
-        $cTransaction->txIns[] = $cTxIn;
-        $cTransaction->id = $sTxID = $this->getTransactionId($cTransaction);        
+        $cTransaction->txIns[] = $cTxIn;   
+        $cTransaction->id = $sTxID = $this->getTransactionId($cTransaction);
         $cTransaction->txIns = array_map(function(cTxIn $oTxIns) use($sPrivateKey, $sTxID) { $oTxIns->signature = $this->signTxIn($sTxID, $sPrivateKey); return $oTxIns; }, $cTransaction->txIns);
 
         return $cTransaction;

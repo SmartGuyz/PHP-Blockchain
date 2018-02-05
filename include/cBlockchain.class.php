@@ -40,6 +40,8 @@ class cBlockchain extends cP2PServer
             // Add Genisis block to DB
             $this->addBlockToDatabase($this->oGenesisBlock);
         }
+        
+        self::debug("Local wallet address is: {$this->getPublicFromWallet()}");
     }
     
     private function loadBlockchain()

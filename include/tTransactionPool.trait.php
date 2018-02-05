@@ -18,7 +18,12 @@ trait tTransactionPool
         array_push($this->aTransactionPool, $oTransaction);
     }
     
-    private function getTransactionPool(): array
+    public function handleReceivedTransaction(cTransaction $oTransaction): void
+    {
+        $this->addToTransactionPool($oTransaction);
+    }
+    
+    public function getTransactionPool()
     {
         $oArrayObject = new ArrayObject($this->aTransactionPool);
         return $oArrayObject->getArrayCopy();

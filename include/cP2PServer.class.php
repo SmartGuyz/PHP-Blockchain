@@ -9,6 +9,7 @@ abstract class cP2PServer
     abstract function addBlockToChain(cBlock $oNewBlock);
     abstract function replaceChain(array $aNewBlocks);
     abstract function getAdjustedDifficulty(cBlock $oLastBlock, array $aBlockchain);
+    abstract function getTransactionPool();
     
     const 
         QUERY_LATEST = 0,
@@ -60,6 +61,23 @@ abstract class cP2PServer
         return $oResponse;
     }
     
+    public function queryTransactionPoolMsg()
+    {
+        $oResponse = new stdClass();
+        $oResponse->type = self::QUERY_TRANSACTION_POOL;
+        $oResponse->data = null;
+        
+        return $oResponse;
+    }
+    
+    public function responseTransactionPoolMsg()
+    {
+        $oResponse = new stdClass();
+        $oResponse->type = self::RESPONSE_TRANSACTION_POOL;
+        $oResponse->data = serialize($this->getTransactionPool());
+        
+        return $oResponse;
+    }
     
     public function broadcast(stdClass $oData)
     {
@@ -71,6 +89,11 @@ abstract class cP2PServer
                 socket_send($aPeer['resource'], $sData, strlen($sData), MSG_EOF);
             }
         }
+    }
+    
+    public function broadCastTransactionPool()
+    {
+        $this->broadcast($this->responseTransactionPoolMsg());
     }
     
     public function handleBlockchainResponse(array $aReceivedBlocks)

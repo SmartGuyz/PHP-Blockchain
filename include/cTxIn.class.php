@@ -7,6 +7,11 @@ class cTxIn
     public $signature;
     
     /**
+     * @var integer
+     */
+    public $time;
+    
+    /**
      * @var string
      */
     public $toAddress;
