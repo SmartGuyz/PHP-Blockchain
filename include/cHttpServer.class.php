@@ -309,7 +309,7 @@ class cHttpServer
                                 break;  
                             case cP2PServer::QUERY_TRANSACTION_POOL:
                                 self::debug("QUERY_TRANSACTION_POOL: responseTransactionPoolMsg()");
-                                $this->cBlockchain->responseTransactionPoolMsg();
+                                $this->sendPeers($this->cBlockchain->responseTransactionPoolMsg(), $iKey);
                                 break;
                             case cP2PServer::RESPONSE_TRANSACTION_POOL:
                                 $aOldPool = $this->cBlockchain->getTransactionPool();
@@ -321,16 +321,19 @@ class cHttpServer
                                         $this->cBlockchain->replaceTransactionPool([]);
                                     }
                                     
-                                    foreach($oMessageData AS $oTransaction)
-                                    {
-                                        try
+                                    if(count($oMessageData) > 0)
+                                    {                            
+                                        foreach($oMessageData AS $oTransaction)
                                         {
-                                            self::debug("RESPONSE_TRANSACTION_POOL: handleReceivedTransaction()");
-                                            $this->cBlockchain->handleReceivedTransaction($oTransaction); 
-                                        }
-                                        catch(Exception $e)
-                                        {
-                                            self::debug("Error RESPONSE_TRANSACTION_POOL: {$e->getMessage()}");
+                                            try
+                                            {
+                                                self::debug("RESPONSE_TRANSACTION_POOL: handleReceivedTransaction()");
+                                                $this->cBlockchain->handleReceivedTransaction($oTransaction); 
+                                            }
+                                            catch(Exception $e)
+                                            {
+                                                self::debug("Error RESPONSE_TRANSACTION_POOL: {$e->getMessage()}");
+                                            }
                                         }
                                     }
                                 }
