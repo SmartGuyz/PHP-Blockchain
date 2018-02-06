@@ -478,7 +478,7 @@ class cBlockchain extends cP2PServer
         if($this->addBlockToChain($oNewBlock) === true)
         {
             // Remove transactions from transactionpool that are in a block
-            $aTempTransactionPool = array_diff($this->getTransactionPool(), $aTransactionPool);
+            $aTempTransactionPool = array_udiff($this->getTransactionPool(), $aTransactionPool, function($oObjA, $oObjB) { return strcmp($oObjA->id, $oObjB->id); });
             $this->replaceTransactionPool($aTempTransactionPool);
             
             // Broadcast transaction pool
