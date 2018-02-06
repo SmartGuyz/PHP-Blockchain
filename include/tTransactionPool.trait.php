@@ -31,9 +31,9 @@ trait tTransactionPool
     
     private function isValidTxForPool(cTransaction $oTransaction, array $aTransactionPool)
     {
-        // TODO: Check if there is not already a transaciotn with the same data (duplicate)
-        return true;        
+        return (bool)array_reduce(array_map(function(cTransaction $oTransactionPool) use ($oTransaction) { return (($oTransactionPool->id == $oTransaction->id) ? true : false); }, $aTransactionPool), function($a, $b) { return $a && $b; }, true);
     }
+    
     /*let transactionPool: Transaction[] = [];
 
     const hasTxIn = (txIn: TxIn, unspentTxOuts: UnspentTxOut[]): boolean => {
