@@ -326,8 +326,7 @@ class cHttpServer
                                         try
                                         {
                                             self::debug("RESPONSE_TRANSACTION_POOL: handleReceivedTransaction()");
-                                            $this->cBlockchain->handleReceivedTransaction($oTransaction);
-                                            $this->cBlockchain->broadCastTransactionPool();
+                                            $this->cBlockchain->handleReceivedTransaction($oTransaction); 
                                         }
                                         catch(Exception $e)
                                         {
@@ -335,6 +334,8 @@ class cHttpServer
                                             self::debug("Error RESPONSE_TRANSACTION_POOL: {$e->getMessage()}");
                                         }
                                     }
+                                    
+                                    $this->cBlockchain->broadCastTransactionPool();
                                 }
                                 else
                                 {
