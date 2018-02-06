@@ -198,19 +198,11 @@ class cHttpServer
                                                 }
                                             }
                                             break;
-                                        case 'balance':
-                                            break;
                                         case 'address':
                                             $sAddress = $this->cBlockchain->getPublicFromWallet();
                                             $this->send(['address' => $sAddress], $iKey);
                                             break;
                                         case 'transaction':
-                                            break;
-                                        case 'mineRawBlock':
-                                            break;
-                                        case 'myUnspentTransactionOutputs':
-                                            break;
-                                        case 'unspentTransactionOutputs':
                                             break;
                                         default:
                                             $this->send('', $iKey, 404);
@@ -226,8 +218,15 @@ class cHttpServer
                                         switch($aArguments[1])
                                         {
                                             case 'mineBlock':
-                                                $oNewBlock = $this->cBlockchain->generateNextBlock((string)$oBody->data);
-                                                $this->send($oNewBlock, $iKey);
+                                                try 
+                                                {
+                                                    $oNewBlock = $this->cBlockchain->generateNextBlock();
+                                                    $this->send($oNewBlock, $iKey);
+                                                }
+                                                catch(Exception $e)
+                                                {
+                                                    $this->send([$e->getMessage()], $iKey, 400);
+                                                }
                                                 break;
                                             case 'addPeer':
                                                 $rSocket = $this->connectToPeer((object)$oBody->data);

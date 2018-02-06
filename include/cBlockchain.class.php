@@ -5,7 +5,7 @@ class cBlockchain extends cP2PServer
     
     private $aChain, $oGenesisBlock, $cSQLiteBC, $cEC, $aIniValues;
     
-    const BLOCK_GENERATION_INTERVAL = 10; // Seconden
+    const BLOCK_GENERATION_INTERVAL = 2; // Seconden
     const DIFFICULTY_ADJUSTMENT_INTERVAL = 10; // Blocks
     
     /**
@@ -55,11 +55,11 @@ class cBlockchain extends cP2PServer
             {
                 if($aSqlChain['index'] > 0)
                 {
-                    $this->addBlockToChain(new cBlock($aSqlChain['index'], $aSqlChain['hash'], $aSqlChain['prevHash'], $aSqlChain['timestamp'], $aSqlChain['data'], $aSqlChain['difficulty'], $aSqlChain['nonce']));
+                    $this->addBlockToChain(new cBlock($aSqlChain['index'], $aSqlChain['hash'], $aSqlChain['prevHash'], $aSqlChain['timestamp'], unserialize($aSqlChain['data']), $aSqlChain['difficulty'], $aSqlChain['nonce']));
                 }
                 else
                 {
-                    $this->aChain = [new cBlock($aSqlChain['index'], $aSqlChain['hash'], $aSqlChain['prevHash'], $aSqlChain['timestamp'], $aSqlChain['data'], $aSqlChain['difficulty'], $aSqlChain['nonce'])];
+                    $this->aChain = [new cBlock($aSqlChain['index'], $aSqlChain['hash'], $aSqlChain['prevHash'], $aSqlChain['timestamp'], unserialize($aSqlChain['data']), $aSqlChain['difficulty'], $aSqlChain['nonce'])];
                 }
                 $aSqlChain = $oSqlChain->fetchArray();
             }
@@ -83,7 +83,7 @@ class cBlockchain extends cP2PServer
         $oSqlCheck = $this->cSQLiteBC->query("SELECT * FROM `blockchain` WHERE `index` = '{$oBlock->index}'");
         if(!$oSqlCheck->fetchArray())
         {
-            $bCheck = $this->cSQLiteBC->exec("INSERT INTO `blockchain` (`index`, `hash`, `prevHash`, `timestamp`, `data`, `difficulty`, `nonce`) VALUES ('{$oBlock->index}', '{$oBlock->hash}', '{$oBlock->prevHash}', '{$oBlock->timestamp}', '{$oBlock->data}', '{$oBlock->difficulty}', '{$oBlock->nonce}')");
+            $bCheck = $this->cSQLiteBC->exec("INSERT INTO `blockchain` (`index`, `hash`, `prevHash`, `timestamp`, `data`, `difficulty`, `nonce`) VALUES ('{$oBlock->index}', '{$oBlock->hash}', '{$oBlock->prevHash}', '{$oBlock->timestamp}', '".serialize($oBlock->data)."', '{$oBlock->difficulty}', '{$oBlock->nonce}')");
             if($bCheck)
             {
                 //self::debug("Block added to the chain (DB)");
@@ -95,6 +95,20 @@ class cBlockchain extends cP2PServer
         }
     }
     
+    private function genesisTransaction(): cTransaction
+    {
+        $oTransaction = new cTransaction();
+        $oTransaction->id = '';
+        $oTransaction->txIns[0] = new cTxIn();
+        $oTransaction->txIns[0]->signature = '';
+        $oTransaction->txIns[0]->time = 1516575600;
+        $oTransaction->txIns[0]->fromAddress = '';
+        $oTransaction->txIns[0]->toAddress = '';
+        $oTransaction->txIns[0]->dataObject = new stdClass();
+        
+        return $oTransaction;
+    }
+    
     /**
      * Generate the first block of the chain (Genesis)
      * This is the only block without a previous hash in it
@@ -103,7 +117,7 @@ class cBlockchain extends cP2PServer
      */
     private function createGenesisBlock(): cBlock
     {
-        return new cBlock(0, "0980bd82e10152a1f76aba0935806d58051a47b9e3683cf8062e07ad827bb5a4", "", 1516575600, "Genesis Block", 0, 0);
+        return new cBlock(0, "0980bd82e10152a1f76aba0935806d58051a47b9e3683cf8062e07ad827bb5a4", "", 1516575600, [$this->genesisTransaction()], 0, 0);
     }
     
     /**
@@ -207,15 +221,15 @@ class cBlockchain extends cP2PServer
      * @param int $iDifficulty
      * @return cBlock
      */
-    private function findBlock(int $iIndex, string $sPrevHash, int $iTimestamp, string $sData, int $iDifficulty): cBlock
+    private function findBlock(int $iIndex, string $sPrevHash, int $iTimestamp, array $aTransactions, int $iDifficulty): cBlock
     {
         $iNonce = 0;
         while(true)
         {
-            $sHash = $this->calculateHash($iIndex, $sPrevHash, $iTimestamp, $sData, $iDifficulty, $iNonce);
+            $sHash = $this->calculateHash($iIndex, $sPrevHash, $iTimestamp, $aTransactions, $iDifficulty, $iNonce);
             if($this->hashMatchesDifficulty($sHash, $iDifficulty))
             {
-                return new cBlock($iIndex, $sHash, $sPrevHash, $iTimestamp, $sData, $iDifficulty, $iNonce);
+                return new cBlock($iIndex, $sHash, $sPrevHash, $iTimestamp, $aTransactions, $iDifficulty, $iNonce);
             }
             $iNonce++;
         }
@@ -232,9 +246,9 @@ class cBlockchain extends cP2PServer
      * @param int $iNonce
      * @return string
      */
-    private function calculateHash(int $iIndex, string $sPrevHash, int $iTimestamp, string $sData, int $iDifficulty, int $iNonce): string
+    private function calculateHash(int $iIndex, string $sPrevHash, int $iTimestamp, array $aTransactions, int $iDifficulty, int $iNonce): string
     {
-        return hash("sha256", $iIndex.$sPrevHash.$iTimestamp.$sData.$iDifficulty.$iNonce);
+        return hash("sha256", $iIndex.$sPrevHash.$iTimestamp.serialize($aTransactions).$iDifficulty.$iNonce);
     }
     
     /**
@@ -245,7 +259,7 @@ class cBlockchain extends cP2PServer
      */
     private function calculateHashForBlock(cBlock $oBlock): string
     {
-        return hash("sha256", $oBlock->index.$oBlock->prevHash.$oBlock->timestamp.$oBlock->data.$oBlock->difficulty.$oBlock->nonce);
+        return hash("sha256", $oBlock->index.$oBlock->prevHash.$oBlock->timestamp.serialize($oBlock->data).$oBlock->difficulty.$oBlock->nonce);
     }
     
     /**
@@ -272,7 +286,7 @@ class cBlockchain extends cP2PServer
         {
             return false;
         }
-        elseif(gettype($oBlock->data) !== "string")
+        elseif(gettype($oBlock->data) !== "array")
         {
             return false;
         }
@@ -448,14 +462,16 @@ class cBlockchain extends cP2PServer
      * @param string $sBlockData
      * @return cBlock
      */
-    public function generateNextBlock(string $sBlockData): cBlock
+    public function generateNextBlock(): cBlock
     {
+        $aTransactionPool = $this->getTransactionPool();
+        
         $oPrevBlock = $this->getLastBlock();
         
         $iNextDifficulty = $this->getDifficulty($this->aChain);
         $iNextIndex = ($oPrevBlock->index + 1);
         $iNextTimestamp = $this->getCurrentTimestamp();
-        $oNewBlock = $this->findBlock($iNextIndex, $oPrevBlock->hash, $iNextTimestamp, $sBlockData, $iNextDifficulty);
+        $oNewBlock = $this->findBlock($iNextIndex, $oPrevBlock->hash, $iNextTimestamp, $aTransactionPool, $iNextDifficulty);
         
         $this->addBlockToChain($oNewBlock);
         
