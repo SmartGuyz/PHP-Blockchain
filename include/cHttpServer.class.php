@@ -330,7 +330,6 @@ class cHttpServer
                                         }
                                         catch(Exception $e)
                                         {
-                                            $this->cBlockchain->replaceTransactionPool($aOldPool);
                                             self::debug("Error RESPONSE_TRANSACTION_POOL: {$e->getMessage()}");
                                         }
                                     }
