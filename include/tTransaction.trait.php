@@ -142,7 +142,7 @@ trait tTransaction
         {
             throw new Exception("invalid public key length: {$sAddress}");
         }
-        elseif(preg_match('^[a-fA-F0-9]+$', $sAddress) !== 1)
+        elseif(preg_match('/^[a-fA-F0-9]+$/', $sAddress) !== 1)
         {
             throw new Exception("public key must contain only hex characters: {$sAddress}");
         }
@@ -152,5 +152,4 @@ trait tTransaction
         }
     }
 }
-?>
 ?>
