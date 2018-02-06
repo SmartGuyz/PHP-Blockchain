@@ -119,6 +119,9 @@ trait tTransaction
     {
         $sMyAddress = $this->getPublicKey($sPrivateKey);
         
+        // Validate receive address
+        $this->isValidAddress($sReceiveAddress);
+        
         $cTxIn = new cTxIn();
         $cTxIn->fromAddress = $this->getPublicFromWallet();
         $cTxIn->toAddress = $sReceiveAddress;
@@ -133,90 +136,21 @@ trait tTransaction
         return $cTransaction;
     }
     
-    
-    /*
-     const validateBlockTransactions = (aTransactions: Transaction[], aUnspentTxOuts: UnspentTxOut[], blockIndex: number): boolean => {
-     const coinbaseTx = aTransactions[0];
-     if (!validateCoinbaseTx(coinbaseTx, blockIndex)) {
-     console.log('invalid coinbase transaction: ' + JSON.stringify(coinbaseTx));
-     return false;
-     }
-     
-     // check for duplicate txIns. Each txIn can be included only once
-     const txIns: TxIn[] = _(aTransactions)
-     .map((tx) => tx.txIns)
-     .flatten()
-     .value();
-     
-     if (hasDuplicates(txIns)) {
-     return false;
-     }
-     
-     // all but coinbase transactions
-     const normalTransactions: Transaction[] = aTransactions.slice(1);
-     return normalTransactions.map((tx) => validateTransaction(tx, aUnspentTxOuts))
-     .reduce((a, b) => (a && b), true);
-     
-     };
-     
-     const hasDuplicates = (txIns: TxIn[]): boolean => {
-     const groups = _.countBy(txIns, (txIn: TxIn) => txIn.txOutId + txIn.txOutIndex);
-     return _(groups)
-     .map((value, key) => {
-     if (value > 1) {
-     console.log('duplicate txIn: ' + key);
-     return true;
-     } else {
-     return false;
-     }
-     })
-     .includes(true);
-     };
-     
-     const updateUnspentTxOuts = (aTransactions: Transaction[], aUnspentTxOuts: UnspentTxOut[]): UnspentTxOut[] => {
-     const newUnspentTxOuts: UnspentTxOut[] = aTransactions
-     .map((t) => {
-     return t.txOuts.map((txOut, index) => new UnspentTxOut(t.id, index, txOut.address, txOut.amount));
-     })
-     .reduce((a, b) => a.concat(b), []);
-     
-     const consumedTxOuts: UnspentTxOut[] = aTransactions
-     .map((t) => t.txIns)
-     .reduce((a, b) => a.concat(b), [])
-     .map((txIn) => new UnspentTxOut(txIn.txOutId, txIn.txOutIndex, '', 0));
-     
-     const resultingUnspentTxOuts = aUnspentTxOuts
-     .filter(((uTxO) => !findUnspentTxOut(uTxO.txOutId, uTxO.txOutIndex, consumedTxOuts)))
-     .concat(newUnspentTxOuts);
-     
-     return resultingUnspentTxOuts;
-     };
-     
-     const processTransactions = (aTransactions: Transaction[], aUnspentTxOuts: UnspentTxOut[], blockIndex: number) => {
-     
-     if (!validateBlockTransactions(aTransactions, aUnspentTxOuts, blockIndex)) {
-     console.log('invalid block transactions');
-     return null;
-     }
-     return updateUnspentTxOuts(aTransactions, aUnspentTxOuts);
-     };
-     
-     
-     // valid address is a valid ecdsa public key in the 04 + X-coordinate + Y-coordinate format
-     const isValidAddress = (address: string): boolean => {
-     if (address.length !== 130) {
-     console.log(address);
-     console.log('invalid public key length');
-     return false;
-     } else if (address.match('^[a-fA-F0-9]+$') === null) {
-     console.log('public key must contain only hex characters');
-     return false;
-     } else if (!address.startsWith('04')) {
-     console.log('public key must start with 04');
-     return false;
-     }
-     return true;
-     };
-     */
+    private function isValidAddress(string $sAddress): void
+    {
+        if(strlen($sAddress) !== 130)
+        {
+            throw new Exception("invalid public key length: {$sAddress}");
+        }
+        elseif(preg_match('^[a-fA-F0-9]+$', $sAddress) !== 1)
+        {
+            throw new Exception("public key must contain only hex characters: {$sAddress}");
+        }
+        elseif(strpos($sAddress, '04') !== 0)
+        {
+            throw new Exception("public key must start with 04: {$sAddress}");
+        }
+    }
 }
+?>
 ?>

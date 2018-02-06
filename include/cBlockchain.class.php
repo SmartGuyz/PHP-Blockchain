@@ -462,10 +462,12 @@ class cBlockchain extends cP2PServer
      * @param string $sBlockData
      * @return cBlock
      */
-    public function generateNextBlock(): cBlock
+    public function generateNextBlock(): ?cBlock
     {
+        // Get copy of the transactionpool
         $aTransactionPool = $this->getTransactionPool();
         
+        // Get last block of the chain
         $oPrevBlock = $this->getLastBlock();
         
         $iNextDifficulty = $this->getDifficulty($this->aChain);
@@ -473,12 +475,21 @@ class cBlockchain extends cP2PServer
         $iNextTimestamp = $this->getCurrentTimestamp();
         $oNewBlock = $this->findBlock($iNextIndex, $oPrevBlock->hash, $iNextTimestamp, $aTransactionPool, $iNextDifficulty);
         
-        $this->addBlockToChain($oNewBlock);
+        if($this->addBlockToChain($oNewBlock) === true)
+        {
+            // Remove transactions from transactionpool that are in a block
+            $aTempTransactionPool = array_diff($this->getTransactionPool(), $aTransactionPool);
+            $this->replaceTransactionPool($aTempTransactionPool);
+            
+            // Broadcast transaction pool
+            $this->broadCastTransactionPool();
+            
+            // Broadcast latest
+            parent::broadcastLatest();
         
-        // Broadcast latest
-        parent::broadcastLatest();
-        
-        return $oNewBlock;
+            return $oNewBlock;
+        }
+        return null;
     }
     
     /**
@@ -486,16 +497,20 @@ class cBlockchain extends cP2PServer
      * 
      * @param cBlock $oNewBlock
      */
-    public function addBlockToChain(cBlock $oNewBlock): void
+    public function addBlockToChain(cBlock $oNewBlock): bool
     {
-        if($this->isValidNewBlock($oNewBlock, $this->getLastBlock()) === true)
+        if($this->isValidNewBlock($oNewBlock, $this->getLastBlock()) !== true)
         {
-            // Push to blockchain array
-            array_push($this->aChain, $oNewBlock);
-            
-            // Add block to DB
-            $this->addBlockToDatabase($oNewBlock);
+            return false;
         }
+        
+        // Push to blockchain array
+        array_push($this->aChain, $oNewBlock);
+        
+        // Add block to DB
+        $this->addBlockToDatabase($oNewBlock);
+        
+        return true;
     }
 }
 ?>

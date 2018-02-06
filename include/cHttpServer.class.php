@@ -312,6 +312,9 @@ class cHttpServer
                                 $this->cBlockchain->responseTransactionPoolMsg();
                                 break;
                             case cP2PServer::RESPONSE_TRANSACTION_POOL:
+                                $aOldPool = $this->cBlockchain->getTransactionPool();
+                                $this->cBlockchain->replaceTransactionPool([]);
+                                
                                 foreach($oMessageData AS $oTransaction)
                                 {
                                     try 
@@ -322,6 +325,7 @@ class cHttpServer
                                     }
                                     catch(Exception $e)
                                     {
+                                        $this->cBlockchain->replaceTransactionPool($aOldPool);
                                         self::debug("Error RESPONSE_TRANSACTION_POOL: {$e->getMessage()}");
                                     }
                                 }

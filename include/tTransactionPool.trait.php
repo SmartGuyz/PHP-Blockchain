@@ -29,6 +29,14 @@ trait tTransactionPool
         return $oArrayObject->getArrayCopy();
     }
     
+    public function replaceTransactionPool(array $aTransactionPool)
+    {
+        if(gettype($aTransactionPool) === "array")
+        {
+            $this->aTransactionPool = $aTransactionPool;
+        }
+    }
+    
     private function isValidTxForPool(cTransaction $oTransaction, array $aTransactionPool)
     {
         return (bool)array_reduce(array_map(function(cTransaction $oTransactionPool) use ($oTransaction) { return (($oTransactionPool->id == $oTransaction->id) ? false : true); }, $aTransactionPool), function($a, $b) { return $a && $b; }, true);
