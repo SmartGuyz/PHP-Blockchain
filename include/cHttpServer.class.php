@@ -315,8 +315,9 @@ class cHttpServer
                                 $aOldPool = $this->cBlockchain->getTransactionPool();
                                 if(is_array($oMessageData))
                                 {
-                                    if(count($oMessageData) !== $aOldPool)
+                                    if(count($oMessageData) !== count($aOldPool))
                                     {
+                                        self::debug("RESPONSE_TRANSACTION_POOL: Diff detected, clearing transactionpool");
                                         $this->cBlockchain->replaceTransactionPool([]);
                                     }
                                     
