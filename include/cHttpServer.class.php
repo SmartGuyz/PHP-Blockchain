@@ -333,8 +333,6 @@ class cHttpServer
                                             self::debug("Error RESPONSE_TRANSACTION_POOL: {$e->getMessage()}");
                                         }
                                     }
-                                    
-                                    $this->cBlockchain->broadCastTransactionPool();
                                 }
                                 else
                                 {
