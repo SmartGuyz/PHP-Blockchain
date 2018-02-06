@@ -313,21 +313,31 @@ class cHttpServer
                                 break;
                             case cP2PServer::RESPONSE_TRANSACTION_POOL:
                                 $aOldPool = $this->cBlockchain->getTransactionPool();
-                                $this->cBlockchain->replaceTransactionPool([]);
-                                
-                                foreach($oMessageData AS $oTransaction)
+                                if(is_array($oMessageData))
                                 {
-                                    try 
+                                    if(count($oMessageData) !== $aOldPool)
                                     {
-                                        self::debug("RESPONSE_TRANSACTION_POOL: handleReceivedTransaction()");
-                                        $this->cBlockchain->handleReceivedTransaction($oTransaction);
-                                        $this->cBlockchain->broadCastTransactionPool();
+                                        $this->cBlockchain->replaceTransactionPool([]);
                                     }
-                                    catch(Exception $e)
+                                    
+                                    foreach($oMessageData AS $oTransaction)
                                     {
-                                        $this->cBlockchain->replaceTransactionPool($aOldPool);
-                                        self::debug("Error RESPONSE_TRANSACTION_POOL: {$e->getMessage()}");
+                                        try
+                                        {
+                                            self::debug("RESPONSE_TRANSACTION_POOL: handleReceivedTransaction()");
+                                            $this->cBlockchain->handleReceivedTransaction($oTransaction);
+                                            $this->cBlockchain->broadCastTransactionPool();
+                                        }
+                                        catch(Exception $e)
+                                        {
+                                            $this->cBlockchain->replaceTransactionPool($aOldPool);
+                                            self::debug("Error RESPONSE_TRANSACTION_POOL: {$e->getMessage()}");
+                                        }
                                     }
+                                }
+                                else
+                                {
+                                    $this->sendPeers('', $iKey, 404);
                                 }
                                 break;
                             default:
