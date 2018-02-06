@@ -317,6 +317,7 @@ class cHttpServer
                                 {
                                     try 
                                     {
+                                        self::debug("RESPONSE_TRANSACTION_POOL: handleReceivedTransaction()");
                                         $this->cBlockchain->handleReceivedTransaction($oTransaction);
                                         $this->cBlockchain->broadCastTransactionPool();
                                     }
