@@ -158,6 +158,34 @@ class cHttpServer
                                                 }
                                             }
                                             break;
+                                        case 'transaction':       // Return only the requested transaction (hash)
+                                            if(!isset($aArguments[2]))
+                                            {
+                                                $this->send('', $iKey, 400);
+                                            }
+                                            else 
+                                            {
+                                                $sTxId = $aArguments[2];
+                                                $oReturnBlock = "";
+                                                $iSend = 0;
+                                                
+                                                foreach($this->cBlockchain->getBlockchain() AS $oBlock)
+                                                {
+                                                    array_map(function($oData) use($sTxId, &$oReturnBlock) { $oReturnBlock = (($oData->id == $sTxId) ? $oData : false); return; }, $oBlock->data);
+                                                    if($oReturnBlock !== false)
+                                                    {
+                                                        $this->send($oReturnBlock, $iKey);
+                                                        $iSend++;
+                                                        break;
+                                                    }
+                                                }
+                                                
+                                                if($iSend === 0)
+                                                {
+                                                    $this->send('', $iKey, 404);
+                                                }
+                                            }
+                                            break;
                                         case 'peers':      // Return all peers on the P2P server
                                             $aPeersKeys = preg_grep("/p2p/i", array_column($this->cBlockchain->aClientsInfo, 'protocol'));
                                             if($aPeersKeys !== false && !empty($aPeersKeys) && count($aPeersKeys) > 0)
