@@ -7,6 +7,7 @@ class cBlockchain extends cP2PServer
     
     const BLOCK_GENERATION_INTERVAL = 2; // Seconden
     const DIFFICULTY_ADJUSTMENT_INTERVAL = 10; // Blocks
+    const COINBASE_AMOUNT = 50; // Tokens per mine transaction
     
     /**
      * Adding genesis block to the chain
@@ -98,13 +99,13 @@ class cBlockchain extends cP2PServer
     private function genesisTransaction(): cTransaction
     {
         $oTransaction = new cTransaction();
-        $oTransaction->id = '';
+        $oTransaction->id = 'e655f6a5f26dc9b4cac6e46f52336428287759cf81ef5ff10854f69d68f43fa3';
         $oTransaction->txIns[0] = new cTxIn();
         $oTransaction->txIns[0]->signature = '';
-        $oTransaction->txIns[0]->time = 1516575600;
-        $oTransaction->txIns[0]->fromAddress = '';
-        $oTransaction->txIns[0]->toAddress = '';
-        $oTransaction->txIns[0]->dataObject = new stdClass();
+        $oTransaction->txIns[0]->txOutId = '';
+        $oTransaction->txIns[0]->txOutIndex = 0;
+        
+        $oTransaction->txOuts[0] = new cTxOut("04bfcab8722991ae774db48f934ca79cfb7dd991229153b9f732ba5334aafcd8e7266e47076996b55a14bf9913ee3145ce0cfc1372ada8ada74bd287450313534a", 50, new stdClass());
         
         return $oTransaction;
     }
@@ -176,11 +177,11 @@ class cBlockchain extends cP2PServer
         
         if($iTimeTaken < ($iTimeExpected / 2))
         {
-            return $oPrevAdjustmentBlock->difficulty + 1;
+            return $oPrevAdjustmentBlock->difficulty++;
         }
         elseif($iTimeTaken > ($iTimeExpected * 2) && $oPrevAdjustmentBlock->difficulty > 0)
         {
-            return $oPrevAdjustmentBlock->difficulty - 1;
+            return $oPrevAdjustmentBlock->difficulty--;
         }
         else
         {
@@ -198,15 +199,9 @@ class cBlockchain extends cP2PServer
      */
     private function hashMatchesDifficulty(string $sHash, int $iDifficulty): bool
     {
-        if($iDifficulty < 0)
-        {
-            //self::debug("Difficulty incorrect ({$iDifficulty})");
-            return true;
-        }
-        $sHashInBinary = (string)hex2bin($sHash);
-        $sRequiredPrefix = (string)str_repeat('0', $iDifficulty);
+        if($iDifficulty < 0) { return true; }
         
-        return ((substr($sHashInBinary, 0, $iDifficulty) == $sRequiredPrefix) ? true : false);
+        return (substr(hex2bin($sHash), 0, $iDifficulty) == str_repeat('0', $iDifficulty));
     }
     
     /**

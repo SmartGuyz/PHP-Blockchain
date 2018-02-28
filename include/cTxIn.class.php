@@ -4,26 +4,16 @@ class cTxIn
     /**
      * @var string
      */
-    public $signature;
+    public $txOutId;
     
     /**
      * @var integer
      */
-    public $time;
+    public $txOutIndex;
     
     /**
      * @var string
      */
-    public $fromAddress;
-    
-    /**
-     * @var string
-     */
-    public $toAddress;
-    
-    /**
-     * @var object
-     */
-    public $dataObject;    
+    public $signature;
 }
 ?>

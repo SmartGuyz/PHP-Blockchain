@@ -7,8 +7,13 @@ class cTransaction
     public $id;
        
     /**
-     * @var array
+     * @var cTxIn[]
      */
     public $txIns = [];
+    
+    /**
+     * @var cTxOut[]
+     */
+    public $txOuts = [];
 }
 ?>
