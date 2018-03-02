@@ -1,31 +1,35 @@
 <?php
 trait tTransactionPool
 {
-    private $aTransactionPool = [];
-    
-    private function addToTransactionPool(cTransaction $oTransaction): void
+    private function addToTransactionPool(cTransaction $oTx, array $aUnspentTxOut): void
     {
-        if(!$this->validateTransaction($oTransaction))
+        if(!$this->validateTransaction($oTx, $aUnspentTxOut))
         {
             throw new Exception('Trying to add invalid tx to pool');
         }
         
-        if(!$this->isValidTxForPool($oTransaction, $this->aTransactionPool))
+        if(!$this->isValidTxForPool($oTx, $this->aTransactionPool))
         {
             throw new Exception('Trying to add invalid tx to pool');
         }
         
-        array_push($this->aTransactionPool, $oTransaction);
+        array_push($this->aTransactionPool, $oTx);
     }
     
     public function handleReceivedTransaction(cTransaction $oTransaction): void
     {
-        $this->addToTransactionPool($oTransaction);
+        $this->addToTransactionPool($oTransaction, $this->getUnspentTxOuts());
     }
     
-    public function getTransactionPool()
+    public function getTransactionPool(): array
     {
         $oArrayObject = new ArrayObject($this->aTransactionPool);
+        return $oArrayObject->getArrayCopy();
+    }
+    
+    public function getUnspentTxOuts(): array
+    {
+        $oArrayObject = new ArrayObject($this->aUnspentTxOuts);
         return $oArrayObject->getArrayCopy();
     }
     
@@ -33,7 +37,22 @@ trait tTransactionPool
     {
         if(gettype($aTransactionPool) === "array")
         {
+            self::debug("Replacing transactionPool");
             $this->aTransactionPool = $aTransactionPool;
+        }
+    }
+    
+    public function getMyUnspentTransactionOutputs()
+    {
+        return $this->findUnspentTxOuts($this->getPublicFromWallet(), $this->getUnspentTxOuts());
+    }
+    
+    public function setUnspentTxOuts(array $aNewUnspentTxOut): void
+    {
+        if(gettype($aNewUnspentTxOut) === "array")
+        {
+            self::debug("Replacing unspentTxouts");
+            $this->aUnspentTxOuts = $aNewUnspentTxOut;
         }
     }
     

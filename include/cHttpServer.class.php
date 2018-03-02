@@ -230,6 +230,10 @@ class cHttpServer
                                             $sAddress = $this->cBlockchain->getPublicFromWallet();
                                             $this->send(['address' => $sAddress], $iKey);
                                             break;
+                                        case 'balance':
+                                            $iBalance = $this->cBlockchain->getAccountBalance();
+                                            $this->send(['balance' => $iBalance], $iKey);
+                                            break;
                                         case 'transaction':
                                             break;
                                         default:

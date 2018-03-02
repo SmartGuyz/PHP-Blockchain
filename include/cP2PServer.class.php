@@ -9,7 +9,7 @@ abstract class cP2PServer
     abstract function addBlockToChain(cBlock $oNewBlock);
     abstract function replaceChain(array $aNewBlocks);
     abstract function getAdjustedDifficulty(cBlock $oLastBlock, array $aBlockchain);
-    abstract function getTransactionPool();
+    abstract function getTransactionPool(): array;
     
     const 
         QUERY_LATEST = 0,

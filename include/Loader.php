@@ -139,4 +139,8 @@ $aConfig[1]['port'] 	= $aIniValues['server']['p2p_port'];
 $aCommands[] = "start";
 $aCommands[] = "stop";
 $aCommands[] = "status";
+
+// Load underscore
+require_once dirname( __FILE__ ).'/underscore/Underscore.php';
+require_once dirname( __FILE__ ).'/underscore/Bridge.php';
 ?>

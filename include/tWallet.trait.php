@@ -37,5 +37,20 @@ trait tWallet
         $oKey = $this->cEC->keyFromPrivate($sPrivateKey, 'hex');
         return $oKey->getPublic(false, 'hex');
     }
+    
+    public function getAccountBalance()
+    {
+        return $this->getBalance($this->getPublicFromWallet(), $this->getUnspentTxOuts());
+    }
+    
+    public function getBalance(string $sAddress, array $aUnspentTxOut): int
+    {
+        return array_reduce($this->findUnspentTxOuts($sAddress, $aUnspentTxOut), function($iAmount, $oUnspentTxOut) { return $iAmount += $oUnspentTxOut->amount; }, 0);
+    }
+    
+    private function findUnspentTxOuts(string $sOwnerAddress, array $aUnspentTxOut)
+    {
+        return array_filter($aUnspentTxOut, function($oUnspentTxOut) use($sOwnerAddress) { return ($oUnspentTxOut == $sOwnerAddress); });
+    }
 }
 ?>

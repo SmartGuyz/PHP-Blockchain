@@ -16,7 +16,7 @@ class cTxOut
      */
     public $dataObject;
     
-    public function __construct(string $sAddress, integer $iAmount, stdClass $oDataObject)
+    public function __construct(string $sAddress, int $iAmount, stdClass $oDataObject)
     {
         $this->address      = (string)$sAddress;
         $this->amount       = (int)$iAmount;

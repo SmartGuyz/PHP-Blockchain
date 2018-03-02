@@ -21,7 +21,7 @@ class cUnspentTxOut
      */
     protected $amount;
     
-    public function __construct(string $sTxOutId, integer $iTxOutIndex, string $sAddress, integer $iAmount)
+    public function __construct(string $sTxOutId, int $iTxOutIndex, string $sAddress, int $iAmount)
     {
         $this->txOutId      = (string)$sTxOutId;
         $this->txOutIndex   = (int)$iTxOutIndex;
