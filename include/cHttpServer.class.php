@@ -281,15 +281,16 @@ class cHttpServer
                                             case 'sendTransaction':
                                                 try 
                                                 {
-                                                    $sToAddress = ((isset($oBody->data->toAddress)) ? $oBody->data->toAddress : '');
-                                                    $oDataObject = ((isset($oBody->data->dataObject)) ? unserialize($oBody->data->dataObject) : '');
+                                                    $sAddress = ((isset($oBody->data->address)) ? $oBody->data->address : '');
+                                                    $iAmount = ((isset($oBody->data->amount)) ? $oBody->data->amount : 0);
+                                                    $oData = ((isset($oBody->data->data)) ? unserialize($oBody->data->data) : new stdClass());
                                                     
-                                                    if(empty($sToAddress) || empty($oDataObject))
+                                                    if(empty($sAddress))
                                                     {
-                                                        throw new Exception("invalid toAddress ({$oBody->data->toAddress}) or dataObject ({$oBody->data->dataObject})");
+                                                        throw new Exception("invalid address ({$oBody->data->address})");
                                                     }
                                                     
-                                                    $sResponse = $this->cBlockchain->sendTransaction($sToAddress, $oDataObject);
+                                                    $sResponse = $this->cBlockchain->sendTransaction($sAddress, $iAmount, $oData);
                                                     
                                                     $this->send([$sResponse], $iKey);
                                                 }

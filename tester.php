@@ -5,7 +5,7 @@ $oData->relation = 12345678;
 $oData->blaat = "tester";
 
 
-$aPostFiels['data'] = ["toAddress" => "04cc783e477377d94d8af7bdea83f9a62615fa5e8401d4f195ee4a1c04ff7ff992505d42a1d978d92b56aaa8e21cd1ee2e08a18644f5889fbc43e3b91774aa8d99", "dataObject" => serialize($oData)];
+$aPostFiels['data'] = ["address" => "04cc783e477377d94d8af7bdea83f9a62615fa5e8401d4f195ee4a1c04ff7ff992505d42a1d978d92b56aaa8e21cd1ee2e08a18644f5889fbc43e3b91774aa8d99", "amount" => 0, "data" => serialize($oData)];
 
 $rCurl = curl_init();
 

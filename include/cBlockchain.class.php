@@ -5,7 +5,7 @@ class cBlockchain extends cP2PServer
     
     const BLOCK_GENERATION_INTERVAL = 2; // Seconden
     const DIFFICULTY_ADJUSTMENT_INTERVAL = 10; // Blocks
-    const COINBASE_AMOUNT = 50; // Tokens per mine transaction
+    const COINBASE_AMOUNT = 5; // Tokens per mine transaction
     
     use tTransaction, tWallet, tUtils;    
     
@@ -33,6 +33,12 @@ class cBlockchain extends cP2PServer
         // Generate genesis block
         $this->oGenesisBlock = $this->genesisBlock();
         
+        // the unspent txOut of genesis block is set to unspentTxOuts on startup
+        $this->aUnspentTxOuts = $this->processTransactions($this->oGenesisBlock->data, [], 0);
+        
+        // and txPool should be only updated at the same time
+        $this->setUnspentTxOuts($this->aUnspentTxOuts);
+        
         self::debug("Starting blockchain...");
         
         $this->loadBlockchain();
@@ -44,9 +50,6 @@ class cBlockchain extends cP2PServer
             
             // Add Genisis block to DB
             $this->addBlockToDatabase($this->oGenesisBlock);
-            
-            // the unspent txOut of genesis block is set to unspentTxOuts on startup
-            $this->aUnspentTxOuts = $this->processTransactions($this->aChain[0]->data, [], 0);
         }
         
         self::debug("Local wallet address is: {$this->getPublicFromWallet()}");
@@ -106,13 +109,13 @@ class cBlockchain extends cP2PServer
     private function genesisTransaction(): cTransaction
     {
         $oTransaction = new cTransaction();
-        $oTransaction->id = '819b37cbea7ef65cf2449366ce482da9720687fe128dbe87ee2fdc81154e1bed';
+        $oTransaction->id = 'e516d790d52f49c79af1666e3b70e44a6e7b0a2583bd3315a239cf86fe27e862';
         $oTransaction->txIns[0] = new cTxIn();
         $oTransaction->txIns[0]->signature = '';
         $oTransaction->txIns[0]->txOutId = '';
         $oTransaction->txIns[0]->txOutIndex = 0;
         
-        $oTransaction->txOuts[0] = new cTxOut("0414623009a7fc115efb52affe75455cdd1818853b21e5ced98dac6acede6332b75aec7b6a546ebc3703cc9a4df12bce774ea52308418d7686d2f68bb82e91bf3a", 50, new stdClass());
+        $oTransaction->txOuts[0] = new cTxOut("0414623009a7fc115efb52affe75455cdd1818853b21e5ced98dac6acede6332b75aec7b6a546ebc3703cc9a4df12bce774ea52308418d7686d2f68bb82e91bf3a", self::COINBASE_AMOUNT, new stdClass());
         
         return $oTransaction;
     }
@@ -355,18 +358,19 @@ class cBlockchain extends cP2PServer
         
         for($i = 0; $i < count($aBlockchainToValidate); $i++) 
         {
+            $oCurrentBlock = $aBlockchainToValidate[$i];
+            
             if($i !== 0 && !$this->isValidNewBlock($aBlockchainToValidate[$i], $aBlockchainToValidate[$i - 1]))
             {
                 return null;
             }
             
-            /*
-             *         aUnspentTxOuts = processTransactions(currentBlock.data, aUnspentTxOuts, currentBlock.index);
-        if (aUnspentTxOuts === null) {
-            console.log('invalid transactions in blockchain');
-            return null;
-        }
-             */
+            $aUnspentTxOuts = $this->processTransactions($oCurrentBlock->data, $aUnspentTxOuts, $oCurrentBlock->index);
+            if($aUnspentTxOuts === null)
+            {
+                self::debug("invalid transactions in blockchain");
+                return null;
+            }
         }
         return $aUnspentTxOuts;
     }
@@ -466,11 +470,9 @@ class cBlockchain extends cP2PServer
             
             // Replace array
             $this->aChain = $aNewBlocks;
-            
-            /*
-        setUnspentTxOuts(aUnspentTxOuts);
-        updateTransactionPool(unspentTxOuts);
-             */
+                  
+            $this->setUnspentTxOuts($aUnspentTxOuts);
+            $this->updateTransactionPool($aUnspentTxOuts);
             
             // Broadcast latest
             parent::broadcastLatest();
@@ -481,6 +483,14 @@ class cBlockchain extends cP2PServer
         }
     }
     
+    public function sendTransaction(string $sAddress, int $iAmount, stdClass $oDataObject)
+    {
+        $oTx = $this->createTransaction($sAddress, $iAmount, $oDataObject, $this->getPrivateFromWallet(), $this->getUnspentTxOuts(), $this->getTransactionPool());
+        $this->addToTransactionPool($oTx, $this->getUnspentTxOuts());
+        $this->broadCastTransactionPool();
+        return $oTx;
+    }
+    
     /**
      * Generate next block in the chain and add it
      * 
@@ -489,29 +499,24 @@ class cBlockchain extends cP2PServer
      */
     public function generateNextBlock(): ?cBlock
     {
-        // Get copy of the transactionpool
-        $aTransactionPool = $this->getTransactionPool();
-        
-        // Get last block of the chain
+        $oCoinbaseTx = $this->getCoinbaseTransaction($this->getPublicFromWallet(), $this->getLastBlock()->index + 1);
+        $aBlockData = array_merge([$oCoinbaseTx], $this->getTransactionPool());
+        return $this->generateRawNextBlock($aBlockData);
+    }
+    
+    private function generateRawNextBlock(array $aBlockData)
+    {
         $oPrevBlock = $this->getLastBlock();
-        
-        $iNextDifficulty = $this->getDifficulty($this->aChain);
+        $iDifficulty = $this->getDifficulty($this->getBlockchain());
         $iNextIndex = ($oPrevBlock->index + 1);
         $iNextTimestamp = $this->getCurrentTimestamp();
-        $oNewBlock = $this->findBlock($iNextIndex, $oPrevBlock->hash, $iNextTimestamp, $aTransactionPool, $iNextDifficulty);
+        $oNewBlock = $this->findBlock($iNextIndex, $oPrevBlock->hash, $iNextTimestamp, $aBlockData, $iDifficulty);
         
-        if($this->addBlockToChain($oNewBlock) === true)
+        if($this->addBlockToChain($oNewBlock))
         {
-            // Remove transactions from transactionpool that are in a block
-            $aTempTransactionPool = array_udiff($this->getTransactionPool(), $aTransactionPool, function($oObjA, $oObjB) { return strcmp($oObjA->id, $oObjB->id); });
-            $this->replaceTransactionPool($aTempTransactionPool);
-            
-            // Broadcast transaction pool
-            $this->broadCastTransactionPool();
-            
             // Broadcast latest
             parent::broadcastLatest();
-        
+            
             return $oNewBlock;
         }
         return null;
@@ -524,18 +529,30 @@ class cBlockchain extends cP2PServer
      */
     public function addBlockToChain(cBlock $oNewBlock): bool
     {
-        if($this->isValidNewBlock($oNewBlock, $this->getLastBlock()) !== true)
+        if($this->isValidNewBlock($oNewBlock, $this->getLastBlock()))
         {
-            return false;
+            $aRetVal = $this->processTransactions($oNewBlock->data, $this->getUnspentTxOuts(), $oNewBlock->index);
+            if($aRetVal === null)
+            {
+                self::debug("block is not valid in terms of transactions");
+                return false;
+            }
+            else
+            {
+                // Push to blockchain array
+                array_push($this->aChain, $oNewBlock);
+                
+                $this->setUnspentTxOuts($aRetVal);
+                $this->updateTransactionPool($this->aUnspentTxOuts);
+                
+                // Add block to DB
+                $this->addBlockToDatabase($oNewBlock);
+                
+                return true;
+            }
         }
         
-        // Push to blockchain array
-        array_push($this->aChain, $oNewBlock);
-        
-        // Add block to DB
-        $this->addBlockToDatabase($oNewBlock);
-        
-        return true;
+        return false;
     }
 }
 ?>

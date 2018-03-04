@@ -13,14 +13,22 @@ trait tTransaction
         return hash('sha256', (string)$sTxInContent.(string)$sTxOutContent);
     }
     
-    private function validateTxIn(cTxIn $oTxIn, cTransaction $oTransaction): bool
+    private function validateTxIn(cTxIn $oTxIn, cTransaction $oTransaction, array $aUnspentTxOuts): bool
     {
-        $sFromAddress       = $oTxIn->fromAddress;
-        $oKey               = $this->cEC->keyFromPublic($sFromAddress, 'hex');
+        $oReferencedUTxOut = _::find($aUnspentTxOuts, function(cUnspentTxOut $oUTxO) use ($oTxIn) { return ($oUTxO->txOutId === $oTxIn->txOutId && $oUTxO->txOutIndex === $oTxIn->txOutIndex); });
+        if($oReferencedUTxOut === null)
+        {
+            self::debug("referenced txOut not found: ".json_encode($oTxIn));
+            return false;
+        }
+        
+        $sAddress           = $oReferencedUTxOut->address;
+        
+        $oKey               = $this->cEC->keyFromPublic($sAddress, 'hex');
         $bValidSignature    = $oKey->verify($oTransaction->id, $oTxIn->signature);
         if(!$bValidSignature)
         {
-            self::debug("invalid txIn signature: {$oTxIn->signature} address {$sFromAddress}");
+            self::debug("invalid txIn signature: {$oTxIn->signature} address {$sAddress}");
             return false;
         }
         return true;
@@ -38,37 +46,7 @@ trait tTransaction
         
         return $sSignature;
     }
-    
-    public function sendTransaction(string $sReceiveAddress, stdClass $oDataObject)
-    {
-        $oTx = $this->createTransaction($sReceiveAddress, $oDataObject, $this->getPrivateFromWallet(), $this->getTransactionPool());
-        $this->addToTransactionPool($oTx);
-        $this->broadCastTransactionPool();
-        
-        return $oTx;
-    }
-    
-    private function createTransaction(string $sReceiveAddress, stdClass $oDataObject, string $sPrivateKey, array $aTxPool): cTransaction
-    {
-        $sMyAddress = $this->getPublicKey($sPrivateKey);
-        
-        // Validate receive address
-        $this->isValidAddress($sReceiveAddress);
-        
-        $cTxIn = new cTxIn();
-        $cTxIn->fromAddress = $this->getPublicFromWallet();
-        $cTxIn->toAddress = $sReceiveAddress;
-        $cTxIn->dataObject = $oDataObject;
-        $cTxIn->time = time();
-        
-        $cTransaction = new cTransaction();
-        $cTransaction->txIns[] = $cTxIn;   
-        $cTransaction->id = $sTxID = $this->getTransactionId($cTransaction);
-        $cTransaction->txIns = array_map(function(cTxIn $oTxIns) use($sPrivateKey, $sTxID) { $oTxIns->signature = $this->signTxIn($sTxID, $sPrivateKey); return $oTxIns; }, $cTransaction->txIns);
-
-        return $cTransaction;
-    }
-    
+       
     private function isValidAddress(string $sAddress): void
     {
         if(strlen($sAddress) !== 130)
@@ -158,7 +136,7 @@ trait tTransaction
         
         if($oTransaction->txIns[0]->txOutIndex !== $iBlockIndex)
         {
-            self::debug("the txIn signature in coinbase tx must be the block height");
+            self::debug("the txIn signature in coinbase tx must be the block height ({$oTransaction->txIns[0]->txOutIndex} vs {$iBlockIndex})");
             return false;
         }
         
@@ -190,7 +168,7 @@ trait tTransaction
             return false;
         }
         
-        $bHasValidTxIns = (bool)array_reduce(array_map(function(cTxIn $oTxIn) use ($oTransaction) { return $this->validateTxIn($oTxIn, $oTransaction); }, $oTransaction->txIns), function($a, $b) { return $a && $b; }, true);
+        $bHasValidTxIns = (bool)array_reduce(array_map(function(cTxIn $oTxIn) use ($oTransaction, $aUnspentTxOuts) { return $this->validateTxIn($oTxIn, $oTransaction, $aUnspentTxOuts); }, $oTransaction->txIns), function($a, $b) { return $a && $b; }, true);
         if(!$bHasValidTxIns)
         {
             self::debug("Some of the txIns are invalid in tx: {$oTransaction->id}");
@@ -216,7 +194,7 @@ trait tTransaction
     
     private function findUnspentTxOut(string $sTxOutId, int $iTxOutIndex, array $aUnspentTxOuts)
     {
-        return array_map(function(cUnspentTxOut $oUTxO) use ($sTxOutId, $iTxOutIndex) { return ($oUTxO->txOutId === $sTxOutId && $oUTxO->txOutIndex === $iTxOutIndex); }, $aUnspentTxOuts);
+        return _::find($aUnspentTxOuts, function(cUnspentTxOut $oUTxO) use ($sTxOutId, $iTxOutIndex) { return ($oUTxO->txOutId === $sTxOutId && $oUTxO->txOutIndex === $iTxOutIndex); });
     }
     
     private function isValidTransactionStructure(cTransaction $oTransaction): bool
@@ -300,6 +278,21 @@ trait tTransaction
             return false;
         }
         return true;
+    }
+    
+    private function getCoinbaseTransaction(string $sAddress, int $iBlockIndex): cTransaction
+    {
+        $cTransaction = new cTransaction();
+        $cTxIn = new cTxIn();
+        $cTxIn->signature = '';
+        $cTxIn->txOutId = '';
+        $cTxIn->txOutIndex = $iBlockIndex;
+        
+        $cTransaction->txIns = [$cTxIn];
+        $cTransaction->txOuts = [new cTxOut($sAddress, self::COINBASE_AMOUNT, new stdClass())];
+        $cTransaction->id = $this->getTransactionId($cTransaction);
+        
+        return $cTransaction;
     }
 }
 ?>

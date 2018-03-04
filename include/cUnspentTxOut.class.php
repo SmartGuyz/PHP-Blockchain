@@ -4,22 +4,22 @@ class cUnspentTxOut
     /**
      * @var string
      */
-    protected $txOutId;
+    public $txOutId;
     
     /**
      * @var integer
      */
-    protected $txOutIndex;
+    public $txOutIndex;
     
     /**
      * @var string
      */
-    protected $address;
+    public $address;
     
     /**
      * @var integer
      */
-    protected $amount;
+    public $amount;
     
     public function __construct(string $sTxOutId, int $iTxOutIndex, string $sAddress, int $iAmount)
     {
