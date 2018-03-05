@@ -1,4 +1,6 @@
 <?php
+use Underscore\Underscore as _;
+
 class cHttpServer
 {
     use tSocketServer;
@@ -147,15 +149,9 @@ class cHttpServer
                                             }
                                             else 
                                             {
-                                                $iChainKey = array_search($aArguments[2], array_column($this->cBlockchain->getBlockchain(), 'hash'));
-                                                if($iChainKey !== false)
-                                                {
-                                                    $this->send($this->cBlockchain->getBlockchain()[$iChainKey], $iKey);
-                                                }
-                                                else
-                                                {
-                                                    $this->send('', $iKey, 404);
-                                                }
+                                                $sHashToSearch = trim($aArguments[2]);
+                                                $aBlock = _::find($this->cBlockchain->getBlockchain(), function(cBlock $oBlock) use ($sHashToSearch) { return ($oBlock->hash === $sHashToSearch); });
+                                                $this->send((($aBlock === null) ? ['error' => 'Block hash found'] : $aBlock), $iKey);
                                             }
                                             break;
                                         case 'transaction':       // Return only the requested transaction (hash)
@@ -199,42 +195,18 @@ class cHttpServer
                                             
                                             unset($aTemp);
                                             break;
-                                        case 'search':       // Searching the blockchain for data
-                                            if(!isset($aArguments[2]))
-                                            {
-                                                $this->send('', $iKey, 400);
-                                            }
-                                            else 
-                                            {
-                                                $aChainKeys = preg_grep("/{$aArguments[2]}/i", array_column($this->cBlockchain->getBlockchain(), 'data'));
-                                                if($aChainKeys !== false && !empty($aChainKeys) && count($aChainKeys) > 0)
-                                                {
-                                                    $aBlockchain = $this->cBlockchain->getBlockchain();
-                                                    foreach($aChainKeys AS $iChainKey => $sValue)
-                                                    {
-                                                        $aTemp[] = $aBlockchain[$iChainKey];
-                                                    }
-                                                    $this->send($aTemp, $iKey);
-                                                    
-                                                    unset($aChainKeys);
-                                                    unset($aBlockchain);
-                                                    unset($aTemp);
-                                                }
-                                                else
-                                                {
-                                                    $this->send('', $iKey, 404);
-                                                }
-                                            }
-                                            break;
                                         case 'address':
-                                            $sAddress = $this->cBlockchain->getPublicFromWallet();
-                                            $this->send(['address' => $sAddress], $iKey);
+                                            $this->send(['address' => $this->cBlockchain->getPublicFromWallet()], $iKey);
                                             break;
                                         case 'balance':
-                                            $iBalance = $this->cBlockchain->getAccountBalance();
-                                            $this->send(['balance' => $iBalance], $iKey);
+                                            $this->send(['balance' => $this->cBlockchain->getAccountBalance()], $iKey);
                                             break;
-                                        case 'transaction':
+                                        case 'transactionPool':
+                                            $this->send($this->cBlockchain->getTransactionPool(), $iKey);
+                                            break;
+                                        case 'unspentTransactionOutputs':
+                                            break;
+                                        case 'myUnspentTransactionOutputs':
                                             break;
                                         default:
                                             $this->send('', $iKey, 404);
@@ -345,34 +317,23 @@ class cHttpServer
                                 $this->sendPeers($this->cBlockchain->responseTransactionPoolMsg(), $iKey);
                                 break;
                             case cP2PServer::RESPONSE_TRANSACTION_POOL:
-                                $aOldPool = $this->cBlockchain->getTransactionPool();
-                                if(is_array($oMessageData))
+                                if(!is_array($oMessageData))
                                 {
-                                    if(count($oMessageData) !== count($aOldPool))
-                                    {
-                                        self::debug("RESPONSE_TRANSACTION_POOL: Diff detected, clearing transactionpool");
-                                        $this->cBlockchain->replaceTransactionPool([]);
-                                    }
-                                    
-                                    if(count($oMessageData) > 0)
-                                    {                            
-                                        foreach($oMessageData AS $oTransaction)
-                                        {
-                                            try
-                                            {
-                                                self::debug("RESPONSE_TRANSACTION_POOL: handleReceivedTransaction()");
-                                                $this->cBlockchain->handleReceivedTransaction($oTransaction); 
-                                            }
-                                            catch(Exception $e)
-                                            {
-                                                self::debug("Error RESPONSE_TRANSACTION_POOL: {$e->getMessage()}");
-                                            }
-                                        }
-                                    }
+                                    self::debug("invalid transaction received: ".json_encode($oMessageData));
+                                    break;
                                 }
-                                else
+                                foreach($oMessageData AS $oTransaction)
                                 {
-                                    $this->sendPeers('', $iKey, 404);
+                                    try
+                                    {
+                                        self::debug("RESPONSE_TRANSACTION_POOL: handleReceivedTransaction()");
+                                        $this->cBlockchain->handleReceivedTransaction($oTransaction);
+                                        $this->cBlockchain->broadCastTransactionPool();
+                                    }
+                                    catch(Exception $e)
+                                    {
+                                        self::debug("Error RESPONSE_TRANSACTION_POOL: {$e->getMessage()}");
+                                    }
                                 }
                                 break;
                             default:

@@ -554,5 +554,10 @@ class cBlockchain extends cP2PServer
         
         return false;
     }
+    
+    public function handleReceivedTransaction(cTransaction $oTransaction): void
+    {
+        $this->addToTransactionPool($oTransaction, $this->getUnspentTxOuts());
+    }
 }
 ?>

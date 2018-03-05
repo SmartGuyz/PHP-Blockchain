@@ -48,15 +48,7 @@ trait tTransactionPool
                 return $obj_a->id != $obj_b->id;
             };
             $this->aTransactionPool = array_udiff($this->aTransactionPool, $aInvalidTxs, $compareObjects);
-            
-            //print_r($this->aTransactionPool);
-            //$this->aTransactionPool = _::without($this->aTransactionPool, $aInvalidTxs);
         }
-    }
-    
-    public function handleReceivedTransaction(cTransaction $oTransaction): void
-    {
-        $this->addToTransactionPool($oTransaction, $this->getUnspentTxOuts());
     }
     
     public function getTransactionPool(): array
