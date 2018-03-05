@@ -96,7 +96,7 @@ trait tWallet
         $aRemoveable = [];
         foreach($aUnspentTxOuts AS $oUnspentOut)
         {
-            $aTxIn = array_map(function(cTxIn $oTxIn) use($oUnspentOut) { return ($oTxIn->txOutIndex === $oUnspentOut->txOutIndex && $oTxIn->txOutId === $oUnspentOut->txOutId); }, $aTxIns);
+            $aTxIn = _::find($aTxIns, function(cTxIn $oTxIn) use($oUnspentOut) { return ($oTxIn->txOutIndex === $oUnspentOut->txOutIndex && $oTxIn->txOutId === $oUnspentOut->txOutId); });
             if(count($aTxIn) === 0)
             {
             }
@@ -109,7 +109,7 @@ trait tWallet
         $compareObjects = function($obj_a, $obj_b) {
             return $obj_a->txOutId != $obj_b->txOutId;
         };
-        //return _::without($aUnspentTxOuts, $aRemoveable);
+
         return array_udiff($aUnspentTxOuts, $aRemoveable, $compareObjects);
     }
     
