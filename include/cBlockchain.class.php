@@ -351,6 +351,7 @@ class cBlockchain extends cP2PServer
         
         if(!$isValidGenesis($aBlockchainToValidate[0])) 
         {
+            self::debug("invalid genesis block in blockchain");
             return null;
         }
         
@@ -362,6 +363,7 @@ class cBlockchain extends cP2PServer
             
             if($i !== 0 && !$this->isValidNewBlock($aBlockchainToValidate[$i], $aBlockchainToValidate[$i - 1]))
             {
+                self::debug("invalid blocks in blockchain");
                 return null;
             }
             
