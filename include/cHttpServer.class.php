@@ -162,24 +162,19 @@ class cHttpServer
                                             else 
                                             {
                                                 $sTxId = $aArguments[2];
-                                                $oReturnBlock = "";
-                                                $iSend = 0;
+
+                                                $aBlocks = [];
+                                                $aTxMap = array_map(function(cBlock $oBlock) { return $oBlock->data; }, $this->cBlockchain->getBlockchain());
+                                                array_walk_recursive($aTxMap, function($v, $k) use(&$aBlocks) { $aBlocks[] = $v; });
                                                 
-                                                foreach($this->cBlockchain->getBlockchain() AS $oBlock)
+                                                $oTransaction = _::find($aBlocks, function($oData) use($sTxId) { return ($oData->id == $sTxId); });
+                                                if($oTransaction !== false)
                                                 {
-                                                    array_map(function($oData) use($sTxId, &$oReturnBlock) { $oReturnBlock = (($oData->id == $sTxId) ? $oData : false); return; }, $oBlock->data);
-                                                    if($oReturnBlock !== false)
-                                                    {
-                                                        $this->send($oReturnBlock, $iKey);
-                                                        $iSend++;
-                                                        break;
-                                                    }
+                                                    $this->send($oTransaction, $iKey);
+                                                    break;
                                                 }
-                                                
-                                                if($iSend === 0)
-                                                {
-                                                    $this->send('', $iKey, 404);
-                                                }
+
+                                                $this->send('', $iKey, 404);
                                             }
                                             break;
                                         case 'peers':      // Return all peers on the P2P server
