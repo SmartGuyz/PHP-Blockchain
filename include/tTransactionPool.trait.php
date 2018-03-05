@@ -7,12 +7,12 @@ trait tTransactionPool
     {
         if(!$this->validateTransaction($oTx, $aUnspentTxOut))
         {
-            throw new Exception('Trying to add invalid tx to pool');
+            throw new Exception('Trying to add invalid tx to pool (validateTransaction)');
         }
         
         if(!$this->isValidTxForPool($oTx, $this->aTransactionPool))
         {
-            throw new Exception('Trying to add invalid tx to pool');
+            throw new Exception('Trying to add invalid tx to pool (isValidTxForPool)');
         }
         
         self::debug("adding to txPool: ".json_encode($oTx));
