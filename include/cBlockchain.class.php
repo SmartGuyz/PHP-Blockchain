@@ -312,25 +312,29 @@ class cBlockchain extends cP2PServer
     {
         if(!$this->isValidBlockStructure($oNewBlock))
         {
+            self::debug("invalid block structure: ".json_encode($oNewBlock));
             return false;
         }
         elseif(($oPrevBlock->index + 1) !== $oNewBlock->index)
         {
+            self::debug("invalid index");
             return false;
         }
         elseif($oPrevBlock->hash !== $oNewBlock->prevHash)
         {
+            self::debug("invalid previoushash");
             return false;
         }
         elseif(!$this->isValidTimestamp($oNewBlock, $oPrevBlock))
         {
+            self::debug("invalid timestamp");
             return false;
         }
         elseif(!$this->hasValidHash($oNewBlock))
         {
+            self::debug("invalid hash new block");
             return false;
         }
-        
         return true;
     }
     
