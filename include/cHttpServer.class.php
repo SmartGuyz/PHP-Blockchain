@@ -191,6 +191,17 @@ class cHttpServer
                                             unset($aTemp);
                                             break;
                                         case 'address':
+                                            if(!isset($aArguments[2]))
+                                            {
+                                                $this->send('', $iKey, 400);
+                                            }
+                                            
+                                            $sAddress = $aArguments[2];
+                                            
+                                            $aUnspentTxOuts = array_filter($this->cBlockchain->getUnspentTxOuts(), function(cUnspentTxOut $oUTxO) use($sAddress) { return ($oUTxO->address === $sAddress); });
+                                            $this->send(['unspentTxOuts' => $aUnspentTxOuts], $iKey);
+                                            break;
+                                        case 'myAddress':
                                             $this->send(['address' => $this->cBlockchain->getPublicFromWallet()], $iKey);
                                             break;
                                         case 'balance':
