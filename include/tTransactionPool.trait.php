@@ -45,7 +45,7 @@ trait tTransactionPool
             self::debug("removing the following transactions from txPool: ".json_encode($aInvalidTxs));
             
             $compareObjects = function($obj_a, $obj_b) {
-                return $obj_a->id != $obj_b->id;
+                return ($obj_a->id != $obj_b->id);
             };
             $this->aTransactionPool = array_udiff($this->aTransactionPool, $aInvalidTxs, $compareObjects);
         }

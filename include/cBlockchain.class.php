@@ -109,8 +109,9 @@ class cBlockchain extends cP2PServer
     private function genesisTransaction(): cTransaction
     {
         $oTransaction = new cTransaction();
-        $oTransaction->id = 'e516d790d52f49c79af1666e3b70e44a6e7b0a2583bd3315a239cf86fe27e862';
-        $oTransaction->txIns[0] = new cTxIn();
+        $oTransaction->timestamp    = 1516575599;
+        $oTransaction->id           = 'e516d790d52f49c79af1666e3b70e44a6e7b0a2583bd3315a239cf86fe27e862';
+        $oTransaction->txIns[0]     = new cTxIn();
         $oTransaction->txIns[0]->signature = '';
         $oTransaction->txIns[0]->txOutId = '';
         $oTransaction->txIns[0]->txOutIndex = 0;

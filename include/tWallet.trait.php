@@ -75,15 +75,15 @@ trait tWallet
     
     private function createTxOuts(string $sReceiverAddress, string $sMyAddress, int $iAmount, int $iLeftOverAmount, stdClass $oDataObject)
     {
-        $oTxOut = new cTxOut($sReceiverAddress, $iAmount, $oDataObject);
+        $oTxOut1 = new cTxOut($sReceiverAddress, $iAmount, $oDataObject);
         if($iLeftOverAmount === 0)
         {
-            return [$oTxOut];
+            return [$oTxOut1];
         }
         else 
         {
             $oLeftOverTx = new cTxOut($sMyAddress, $iLeftOverAmount, new stdClass());
-            return [$oTxOut, $oLeftOverTx];
+            return [$oTxOut1, $oLeftOverTx];
         }
     }
     
@@ -107,9 +107,9 @@ trait tWallet
         }
         
         $compareObjects = function($obj_a, $obj_b) {
-            return $obj_a->txOutId != $obj_b->txOutId;
+            return (($obj_a->txOutId == $obj_b->txOutId) ? 0 : -1);
         };
-
+        
         return array_udiff($aUnspentTxOuts, $aRemoveable, $compareObjects);
     }
     
@@ -135,8 +135,9 @@ trait tWallet
         $cTransaction = new cTransaction();
         $cTransaction->txIns = $aUnsignedTxIns;
         $cTransaction->txOuts = $this->createTxOuts($sReceiverAddress, $sMyAddress, $iAmount, $iLeftOverAmount, $oDataObject);        
+        $cTransaction->timestamp = $this->getCurrentTimestamp();
         $cTransaction->id = $sTxID = $this->getTransactionId($cTransaction);
-        $cTransaction->txIns = array_map(function(cTxIn $oTxIns) use($sPrivateKey, $sTxID) { $oTxIns->signature = $this->signTxIn($sTxID, $sPrivateKey); return $oTxIns; }, $cTransaction->txIns);
+        $cTransaction->txIns = array_map(function(cTxIn $oTxIns, $iKey) use($cTransaction, $sPrivateKey, $sTxID, $aUnspentTxOut) { $oTxIns->signature = $this->signTxIn($cTransaction, $iKey, $sPrivateKey, $aUnspentTxOut); return $oTxIns; }, $cTransaction->txIns, array_keys($cTransaction->txIns));
         
         return $cTransaction;
     }

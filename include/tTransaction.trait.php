@@ -39,14 +39,30 @@ trait tTransaction
         return $this->cEC->keyFromPrivate($sPrivateKey, 'hex')->getPublic(false, 'hex');
     }
     
-    private function signTxIn(string $sTxIn, string $sPrivateKey)
+    private function signTxIn(cTransaction $oTransaction, int $iTxInIndex, string $sPrivateKey, array $aUnspentTxOuts)
     {
+        $oTxIn = $oTransaction->txIns[$iTxInIndex];
+        $sDataToSign = $oTransaction->id;
+        
+        $aReferencedUnspentTxOut = $this->findUnspentTxOut($oTxIn->txOutId, $oTxIn->txOutIndex, $aUnspentTxOuts);
+        if($aReferencedUnspentTxOut == null)
+        {
+            self::debug("could not find referenced txOut");
+            throw new ErrorException();
+        }
+        $sReferenceAddress = $aReferencedUnspentTxOut->address;
+        
+        if($this->getPublicKey($sPrivateKey) != $sReferenceAddress)
+        {
+            self::debug("trying to sign an input with private key that does not match the address that is referenced in txIn");
+        }
+        
         $oKey = $this->cEC->keyFromPrivate($sPrivateKey, 'hex');
-        $sSignature = $oKey->sign($sTxIn)->toDER('hex');
+        $sSignature = $oKey->sign($sDataToSign)->toDER('hex');
         
         return $sSignature;
     }
-       
+    
     private function isValidAddress(string $sAddress): void
     {
         if(strlen($sAddress) !== 130)
@@ -75,7 +91,7 @@ trait tTransaction
     }
     
     private function updateUnspentTxOuts(array $aTransactions, array $aUnspentTxOuts): array
-    {       
+    {  
         $aNewUnspentTxOuts = array_reduce(array_map(function(cTransaction $oTransaction) { return array_map(function(cTxOut $oTxOut, $iKey) use($oTransaction) { return new cUnspentTxOut($oTransaction->id, $iKey, $oTxOut->address, $oTxOut->amount); }, $oTransaction->txOuts, array_keys($oTransaction->txOuts)); }, $aTransactions), function($a, $b) { return array_merge($a, $b); }, []);        
         $aConsumedTxOuts = array_map(function(cTxIn $oTxIn) { return new cUnspentTxOut($oTxIn->txOutId, $oTxIn->txOutIndex, '', 0); }, array_reduce(array_map(function(cTransaction $oTransaction) { return $oTransaction->txIns; }, $aTransactions), function($a, $b) { return array_merge($a, $b); }, []));
         $aResultingUnspentTxOuts = array_merge(array_filter($aUnspentTxOuts, function($oUnspentTxOut) use($aConsumedTxOuts) { return !$this->findUnspentTxOut($oUnspentTxOut->txOutId, $oUnspentTxOut->txOutIndex, $aConsumedTxOuts); }), $aNewUnspentTxOuts);
@@ -151,7 +167,6 @@ trait tTransaction
             self::debug("invalid coinbase amount in coinbase transaction");
             return false;
         }
-        
         return true;
     }
     
@@ -202,6 +217,12 @@ trait tTransaction
         if(gettype($oTransaction->id) !== 'string')
         {
             self::debug("transactionId missing");
+            return false;
+        }
+        
+        if(gettype($oTransaction->timestamp) !== 'integer')
+        {
+            self::debug("transactionTime missing");
             return false;
         }
         
@@ -290,6 +311,7 @@ trait tTransaction
         
         $cTransaction->txIns = [$cTxIn];
         $cTransaction->txOuts = [new cTxOut($sAddress, self::COINBASE_AMOUNT, new stdClass())];
+        $cTransaction->timestamp = $this->getCurrentTimestamp();
         $cTransaction->id = $this->getTransactionId($cTransaction);
         
         return $cTransaction;

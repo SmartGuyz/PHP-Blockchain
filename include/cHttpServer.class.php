@@ -77,7 +77,6 @@ class cHttpServer
                 
                 if(in_array($aClient['resource'], $this->aRead))
                 { 
-                    self::debug("Incoming data detected...");
                     $sBuffer = null;
                     $iError = 0;
                     $iBytes = 0;
@@ -115,7 +114,6 @@ class cHttpServer
                         $sBuffer .= $sTempBuffer;
                         $iBytes += $iBytes;
                     }
-                    self::debug("Data received...");
 
                     if($iError > 0)
                     {
@@ -194,7 +192,20 @@ class cHttpServer
                                                 $oTransaction = _::find($aBlocks, function($oData) use($sTxId) { return ($oData->id == $sTxId); });
                                                 if($oTransaction !== false)
                                                 {
-                                                    $this->send($oTransaction, $iKey);
+                                                    $findBlock = function(cBlock $oBlock) use($oTransaction) 
+                                                    {
+                                                        foreach($oBlock->data AS $oObject)
+                                                        {
+                                                            if($oObject->id == $oTransaction->id)
+                                                            {
+                                                                return $oBlock;
+                                                            }
+                                                        }
+                                                    };
+                                                    
+                                                    $oFoundBlock = _::find($this->cBlockchain->getBlockchain(), $findBlock);
+                                                    
+                                                    $this->send(['transaction' => $oTransaction, 'block' => $oFoundBlock], $iKey);
                                                     break;
                                                 }
 

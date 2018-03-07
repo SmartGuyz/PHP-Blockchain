@@ -5,6 +5,11 @@ class cTransaction
      * @var string
      */
     public $id;
+    
+    /**
+     * @var int
+     */
+    public $timestamp;
        
     /**
      * @var cTxIn[]
