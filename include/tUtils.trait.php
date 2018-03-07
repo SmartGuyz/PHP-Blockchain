@@ -3,7 +3,11 @@ trait tUtils
 {
     private static function debug($sData)
     {
-        echo " * {$sData}".PHP_EOL;
+        $t = microtime(true);
+        $micro = sprintf("%06d",($t - floor($t)) * 1000000);
+        $d = new DateTime( date('Y-m-d H:i:s.'.$micro, $t) );
+        
+        echo "[".$d->format("H:i:s.u")."] * {$sData}".PHP_EOL;
     }
     
     private function instanceECDSA(string $sPreset = 'secp256k1')

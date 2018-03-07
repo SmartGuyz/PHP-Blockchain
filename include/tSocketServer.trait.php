@@ -8,32 +8,13 @@ trait tSocketServer
         $rSocket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
         
         // Set timeout
-        socket_set_option($rSocket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => 1, 'usec' => 0]);
-        socket_set_option($rSocket, SOL_SOCKET, SO_SNDTIMEO, ['sec' => 1, 'usec' => 0]);
+        //socket_set_option($rSocket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => 1, 'usec' => 0]);
+        //socket_set_option($rSocket, SOL_SOCKET, SO_SNDTIMEO, ['sec' => 1, 'usec' => 0]);
         
         socket_set_nonblock($rSocket); 
         
         @socket_connect($rSocket, $oData->address, $oData->port);
         
-        /*$iAttempts = 0;
-        $bConnected; 
-        while(!($bConnected = @socket_connect($rSocket, $oData->address, $oData->port)) && $iAttempts < 3) 
-        {
-            if(socket_last_error() != SOCKET_EINPROGRESS && socket_last_error() != SOCKET_EALREADY) 
-            {
-                socket_close($rSocket);
-                return false;
-            }
-            $iAttempts++;
-            usleep(1000);
-        }
-        
-        if(!$bConnected) 
-        {
-            socket_close($rSocket);
-            return false;
-        }
-        */
         socket_set_block($rSocket); 
         
         return $rSocket;
@@ -84,6 +65,7 @@ trait tSocketServer
             {
                 self::debug("Socket is now listening, waiting for clients to connect...");
             }
+            //break;
         }
     }
        
@@ -138,8 +120,10 @@ trait tSocketServer
         
         $sData = (($aData != '') ? $sHeader.json_encode($aData, JSON_PRETTY_PRINT) : $sHeader);
         
+        self::debug("Sending back data...");
         socket_send($this->cBlockchain->aClientsInfo[$iKey]['resource'], $sData, strlen($sData), MSG_EOF);
-        
+
+        self::debug("Closing connection...");
         $this->closeConnection($iKey);
     }
     
@@ -153,9 +137,8 @@ trait tSocketServer
     
     private function closeConnection($iKey)
     {
-        self::debug("Disconnected client {$this->cBlockchain->aClientsInfo[$iKey]['ipaddr']}...");
-        
         @socket_close($this->cBlockchain->aClientsInfo[$iKey]['resource']);
+        self::debug("Disconnected client {$this->cBlockchain->aClientsInfo[$iKey]['ipaddr']}...");
         unset($this->cBlockchain->aClientsInfo[$iKey]);
     }
 }

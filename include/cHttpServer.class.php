@@ -76,26 +76,52 @@ class cHttpServer
                 }
                 
                 if(in_array($aClient['resource'], $this->aRead))
-                {  
+                { 
+                    self::debug("Incoming data detected...");
                     $sBuffer = null;
-                    while(($iFlag = @socket_recv($aClient['resource'], $sTempBuffer, 1024, 0)) > 0) 
+                    $iError = 0;
+                    $iBytes = 0;
+                    while(true) 
                     {
+                        $iBytes = @socket_recv($aClient['resource'], $sTempBuffer, 1024, MSG_DONTWAIT);
+                        
+                        $iLastError = socket_last_error($aClient['resource']);
+                        if($iLastError != 11 && $iLastError > 0)
+                        {
+                            self::debug("socket_recv error, closing connection for client {$iKey}");
+                            $this->closeConnection($iKey);
+                            $iError++;
+                            break;
+                        }
+                        
+                        if($iBytes === false)
+                        {
+                            break;
+                        }
+                        elseif($iBytes < 0)
+                        {
+                            self::debug("socket_recv error, losing connection for client {$iKey}");
+                            $this->closeConnection($iKey);
+                            $iError++;
+                            break;
+                        }
+                        elseif($iBytes === 0)
+                        {
+                            self::debug("Buffer empty, closing connection for client {$iKey}");
+                            $this->closeConnection($iKey);
+                            $iError++;
+                            break;
+                        }
                         $sBuffer .= $sTempBuffer;
+                        $iBytes += $iBytes;
+                    }
+                    self::debug("Data received...");
+
+                    if($iError > 0)
+                    {
+                        continue;
                     }
                     
-                    if($iFlag < 0)
-                    {
-                        self::debug("socket_recv error, closing connection for client {$iKey}");
-                        $this->closeConnection($iKey);
-                        continue;
-                    }
-                    elseif($iFlag === 0)
-                    {
-                        self::debug("Buffer empty, closing connection for client {$iKey}");
-                        $this->closeConnection($iKey);
-                        continue;
-                    }
-
                     if(empty($sBuffer) OR $sBuffer == '' OR $sBuffer == null)
                     {
                         self::debug("Closing connection for key {$iKey}");
@@ -104,8 +130,6 @@ class cHttpServer
                     }
                     
                     $sBuffer = trim($sBuffer);  
-                    
-                    //self::debug("Received {$sBuffer}");
                     
                     if($aClient['protocol'] == 'http')
                     {
@@ -206,6 +230,10 @@ class cHttpServer
                                             break;
                                         case 'balance':
                                             $this->send(['balance' => $this->cBlockchain->getAccountBalance()], $iKey);
+                                            break;
+                                        case 'supply':
+                                            $iSupply = array_reduce($this->cBlockchain->getUnspentTxOuts(), function($iAmount, $oUnspentTxOut) { return $iAmount += $oUnspentTxOut->amount; }, 0);
+                                            $this->send(['supply' => $iSupply, 'last' => $this->cBlockchain->getLastBlock()->index], $iKey);
                                             break;
                                         case 'transactionPool':
                                             $this->send($this->cBlockchain->getTransactionPool(), $iKey);
