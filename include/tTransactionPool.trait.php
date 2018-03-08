@@ -72,11 +72,6 @@ trait tTransactionPool
         }
     }
     
-    public function getMyUnspentTransactionOutputs()
-    {
-        return $this->findUnspentTxOuts($this->getPublicFromWallet(), $this->getUnspentTxOuts());
-    }
-    
     public function setUnspentTxOuts(array $aNewUnspentTxOut): void
     {
         if(gettype($aNewUnspentTxOut) === "array")

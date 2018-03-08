@@ -176,6 +176,27 @@ class cHttpServer
                                                 $this->send((($aBlock === null) ? ['error' => 'Block hash found'] : $aBlock), $iKey);
                                             }
                                             break;
+                                        case 'transactionAddress':
+                                            if(!isset($aArguments[2]))
+                                            {
+                                                $this->send('', $iKey, 400);
+                                            }
+                                            else
+                                            {
+                                                $sAddress = $aArguments[2];
+                                                
+                                                $aTxs = [];
+                                                $aTxOuts = [];
+                                                
+                                                // Get all transactions
+                                                $aTxMap = array_map(function(cBlock $oBlock) { return $oBlock->data; }, $this->cBlockchain->getBlockchain());
+                                                array_walk_recursive($aTxMap, function($v, $k) use(&$aTxs) { $aTxs[] = $v->txOuts; });
+                                                
+                                                print_r($aTxOuts);
+                                                
+                                                $this->send('', $iKey, 404);
+                                            }
+                                            break;
                                         case 'transaction':       // Return only the requested transaction (hash)
                                             if(!isset($aArguments[2]))
                                             {
@@ -239,8 +260,16 @@ class cHttpServer
                                         case 'myAddress':
                                             $this->send(['address' => $this->cBlockchain->getPublicFromWallet()], $iKey);
                                             break;
-                                        case 'balance':
+                                        case 'myBalance':
                                             $this->send(['balance' => $this->cBlockchain->getAccountBalance()], $iKey);
+                                            break;
+                                        case 'balance':
+                                            if(!isset($aArguments[2]))
+                                            {
+                                                $this->send('', $iKey, 400);
+                                            }
+                                            
+                                            $this->send(['balance' => $this->cBlockchain->getBalance($aArguments[2], $this->cBlockchain->getUnspentTxOuts())], $iKey);
                                             break;
                                         case 'supply':
                                             $iSupply = array_reduce($this->cBlockchain->getUnspentTxOuts(), function($iAmount, $oUnspentTxOut) { return $iAmount += $oUnspentTxOut->amount; }, 0);

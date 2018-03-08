@@ -566,5 +566,10 @@ class cBlockchain extends cP2PServer
     {
         $this->addToTransactionPool($oTransaction, $this->getUnspentTxOuts());
     }
+    
+    public function getMyUnspentTransactionOutputs()
+    {
+        return $this->findUnspentTxOuts($this->getPublicFromWallet(), $this->getUnspentTxOuts());
+    }
 }
 ?>
