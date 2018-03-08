@@ -176,7 +176,7 @@ class cHttpServer
                                                 $this->send((($aBlock === null) ? ['error' => 'Block hash found'] : $aBlock), $iKey);
                                             }
                                             break;
-                                        case 'transactionAddress':
+                                        case 'addressTransactions':
                                             if(!isset($aArguments[2]))
                                             {
                                                 $this->send('', $iKey, 400);
@@ -187,14 +187,42 @@ class cHttpServer
                                                 
                                                 $aTxs = [];
                                                 $aTxOuts = [];
+                                                $aTxIns = [];
                                                 
-                                                // Get all transactions
                                                 $aTxMap = array_map(function(cBlock $oBlock) { return $oBlock->data; }, $this->cBlockchain->getBlockchain());
-                                                array_walk_recursive($aTxMap, function($v, $k) use(&$aTxs) { $aTxs[] = $v->txOuts; });
+                                                array_walk_recursive($aTxMap, function($v, $k) use(&$aTxs) { $aTxs[] = $v; });
                                                 
-                                                print_r($aTxOuts);
+                                                $aTxs = json_decode(json_encode($aTxs), true);
+
+                                                $search = function(array $array, string $term) 
+                                                {
+                                                    $iterator = new RecursiveArrayIterator($array);
+                                                    $leafs = new RecursiveIteratorIterator($iterator);
+                                                    $aSearch = new RegexIterator($leafs, sprintf('~^%s$~', preg_quote($term, '~')));
+                                                    foreach($aSearch AS $sValue) 
+                                                    {
+                                                        $parent = $aSearch->getSubIterator(0)->current();
+                                                        yield $parent;
+                                                    }
+                                                };
                                                 
-                                                $this->send('', $iKey, 404);
+                                                $matches = $search($aTxs, $sAddress);
+                                                foreach ($matches as $index => $match) 
+                                                {
+                                                    $aTxOuts[] = $match;
+                                                }
+                                                // Get all transactions
+                                                /*$aTxMap = array_map(function(cBlock $oBlock) { return $oBlock->data; }, $this->cBlockchain->getBlockchain());
+                                                array_walk_recursive($aTxMap, function($v, $k) use(&$aTxs) { $aTxs[] = $v; });
+                                                
+                                                $aTxMap = array_map(function($oTx) { return $oTx->txOuts; }, $aTxs);
+                                                array_walk_recursive($aTxMap, function($v, $k) use(&$aTxOuts) { $aTxOuts[] = $v; });
+                                                
+                                                print_r($arrIt);*/
+                                                
+                                                $this->send(['txOuts' => $aTxOuts, 'txIns' => $aTxIns], $iKey);
+                                                
+                                                //$this->send('', $iKey, 404);
                                             }
                                             break;
                                         case 'transaction':       // Return only the requested transaction (hash)
