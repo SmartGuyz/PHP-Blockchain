@@ -186,7 +186,6 @@ class cHttpServer
                                                 $sAddress = $aArguments[2];
                                                 
                                                 $aTxs = [];
-                                                $aTxOuts = [];
                                                 $aReturn = [];
                                                 
                                                 $aTxMap = array_map(function(cBlock $oBlock) { return $oBlock->data; }, $this->cBlockchain->getBlockchain());
