@@ -187,42 +187,39 @@ class cHttpServer
                                                 
                                                 $aTxs = [];
                                                 $aTxOuts = [];
-                                                $aTxIns = [];
+                                                $aReturn = [];
                                                 
                                                 $aTxMap = array_map(function(cBlock $oBlock) { return $oBlock->data; }, $this->cBlockchain->getBlockchain());
                                                 array_walk_recursive($aTxMap, function($v, $k) use(&$aTxs) { $aTxs[] = $v; });
                                                 
-                                                $aTxs = json_decode(json_encode($aTxs), true);
-
-                                                $search = function(array $array, string $term) 
+                                                foreach($aTxs AS $oTransaction)
                                                 {
-                                                    $iterator = new RecursiveArrayIterator($array);
-                                                    $leafs = new RecursiveIteratorIterator($iterator);
-                                                    $aSearch = new RegexIterator($leafs, sprintf('~^%s$~', preg_quote($term, '~')));
-                                                    foreach($aSearch AS $sValue) 
+                                                    foreach($oTransaction->txIns AS $oTxIn)
                                                     {
-                                                        $parent = $aSearch->getSubIterator(0)->current();
-                                                        yield $parent;
+                                                        $oTx = _::find($aTxs, function($oTx) use($oTxIn) { return ($oTx->id == $oTxIn->txOutId); });
+                                                        $aTemp = @array_filter($oTx->txOuts, function(cTxOut $oTxOut) use($sAddress) { return $oTxOut->address === $sAddress; });
+                                                        if(count($aTemp) > 0)
+                                                        {
+                                                            $aReturn[] = $oTransaction->id;
+                                                            break;
+                                                        }
                                                     }
-                                                };
-                                                
-                                                $matches = $search($aTxs, $sAddress);
-                                                foreach ($matches as $index => $match) 
-                                                {
-                                                    $aTxOuts[] = $match;
+                                                    
+                                                    foreach($oTransaction->txOuts AS $oTxOut)
+                                                    {
+                                                        if($oTxOut->address == $sAddress)
+                                                        {
+                                                            $aReturn[] = $oTransaction->id;
+                                                            break;
+                                                        }
+                                                    }
                                                 }
-                                                // Get all transactions
-                                                /*$aTxMap = array_map(function(cBlock $oBlock) { return $oBlock->data; }, $this->cBlockchain->getBlockchain());
-                                                array_walk_recursive($aTxMap, function($v, $k) use(&$aTxs) { $aTxs[] = $v; });
                                                 
-                                                $aTxMap = array_map(function($oTx) { return $oTx->txOuts; }, $aTxs);
-                                                array_walk_recursive($aTxMap, function($v, $k) use(&$aTxOuts) { $aTxOuts[] = $v; });
+                                                $aTemp = array_unique($aReturn);
+                                                unset($aReturn);
+                                                array_walk_recursive($aTemp, function($v, $k) use(&$aReturn) { $aReturn[] = $v; });
                                                 
-                                                print_r($arrIt);*/
-                                                
-                                                $this->send(['txOuts' => $aTxOuts, 'txIns' => $aTxIns], $iKey);
-                                                
-                                                //$this->send('', $iKey, 404);
+                                                $this->send(['txs' => $aReturn], $iKey);
                                             }
                                             break;
                                         case 'transaction':       // Return only the requested transaction (hash)
@@ -350,6 +347,27 @@ class cHttpServer
                                                 else
                                                 {
                                                     $this->send(['message' => "Connected with {$oBody->data->address}:{$oBody->data->port} failed"], $iKey);
+                                                }
+                                                break;
+                                            case 'mineTransaction':
+                                                try 
+                                                {
+                                                    $sAddress = ((isset($oBody->data->address)) ? $oBody->data->address : '');
+                                                    $iAmount = ((isset($oBody->data->amount)) ? $oBody->data->amount : 0);
+                                                    $oData = ((isset($oBody->data->data)) ? unserialize($oBody->data->data) : new stdClass());
+                                                    
+                                                    if(empty($sAddress))
+                                                    {
+                                                        throw new Exception("invalid address ({$oBody->data->address})");
+                                                    }
+                                                    
+                                                    $sResponse = $this->cBlockchain->generatenextBlockWithTransaction($sAddress, $iAmount, $oData);
+                                                    
+                                                    $this->send([$sResponse], $iKey);
+                                                }
+                                                catch(Exception $e)
+                                                {
+                                                    $this->send([$e->getMessage()], $iKey, 400);
                                                 }
                                                 break;
                                             case 'sendTransaction':

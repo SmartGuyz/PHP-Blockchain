@@ -241,6 +241,25 @@ class cBlockchain extends cP2PServer
         }
     }
     
+    public function generatenextBlockWithTransaction(string $sReceiverAddress, int $iAmount, stdClass $oDataObject)
+    {
+        if($this->isValidAddress($sReceiverAddress))
+        {
+            throw new Exception('invalid address');
+        }
+        
+        if(gettype($iAmount) !== 'integer')
+        {
+            throw new Exception('invalid amount');
+        }
+        
+        $oCoincaseTx = $this->getCoinbaseTransaction($this->getPublicFromWallet(), ($this->getLastBlock()->index - 1));
+        $oTransaction = $this->createTransaction($sReceiverAddress, $iAmount, $oDataObject, $this->getPrivateFromWallet(), $this->getUnspentTxOuts(), $this->getTransactionPool());
+        $aBlockData = [$oCoincaseTx, $oTransaction];
+        
+        return $this->generateRawNextBlock($aBlockData);
+    }
+    
     /**
      * Calculate a new hash (SHA256) by feeding it with dynamic information
      * 
