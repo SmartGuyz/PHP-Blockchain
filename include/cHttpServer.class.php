@@ -77,42 +77,67 @@ class cHttpServer
                 
                 if(in_array($aClient['resource'], $this->aRead))
                 { 
-                    $sBuffer = null;
-                    $iError = 0;
-                    $iBytes = 0;
-                    while(true) 
+                    // TDO : Needs a fix
+                    if($aClient['protocol'] == 'p2p')
                     {
-                        $iBytes = @socket_recv($aClient['resource'], $sTempBuffer, 1024, MSG_DONTWAIT);
+                        $sBuffer = null;
+                        while(($iFlag = @socket_recv($aClient['resource'], $sTempBuffer, 1024, 0)) > 0)
+                        {
+                            $sBuffer .= $sTempBuffer;
+                        }
                         
-                        /*$iLastError = socket_last_error($aClient['resource']);
-                        if($iLastError != 11 && $iLastError > 0)
+                        if($iFlag < 0)
                         {
                             self::debug("socket_recv error, closing connection for client {$iKey}");
                             $this->closeConnection($iKey);
-                            $iError++;
-                            break;
-                        }*/
-                        
-                        if($iBytes === false)
-                        {
-                            break;
+                            continue;
                         }
-                        elseif($iBytes < 0)
-                        {
-                            self::debug("socket_recv error, losing connection for client {$iKey}");
-                            $this->closeConnection($iKey);
-                            $iError++;
-                            break;
-                        }
-                        elseif($iBytes === 0)
+                        elseif($iFlag === 0)
                         {
                             self::debug("Buffer empty, closing connection for client {$iKey}");
                             $this->closeConnection($iKey);
-                            $iError++;
-                            break;
+                            continue;
                         }
-                        $sBuffer .= $sTempBuffer;
-                        $iBytes += $iBytes;
+                    }
+                    elseif($aClient['protocol'] == 'http')
+                    {
+                        $sBuffer = null;
+                        $iError = 0;
+                        $iBytes = 0;
+                        while(true) 
+                        {
+                            $iBytes = @socket_recv($aClient['resource'], $sTempBuffer, 1024, MSG_DONTWAIT);
+                            
+                            $iLastError = socket_last_error($aClient['resource']);
+                            if($iLastError != 11 && $iLastError > 0)
+                            {
+                                self::debug("socket_recv error, closing connection for client {$iKey}");
+                                $this->closeConnection($iKey);
+                                $iError++;
+                                break;
+                            }
+                            
+                            if($iBytes === false)
+                            {
+                                break;
+                            }
+                            elseif($iBytes < 0)
+                            {
+                                self::debug("socket_recv error, losing connection for client {$iKey}");
+                                $this->closeConnection($iKey);
+                                $iError++;
+                                break;
+                            }
+                            elseif($iBytes === 0)
+                            {
+                                self::debug("Buffer empty, closing connection for client {$iKey}");
+                                $this->closeConnection($iKey);
+                                $iError++;
+                                break;
+                            }
+                            $sBuffer .= $sTempBuffer;
+                            $iBytes += $iBytes;
+                        }
                     }
 
                     if($iError > 0)
