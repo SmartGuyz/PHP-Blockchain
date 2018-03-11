@@ -77,11 +77,11 @@ class cHttpServer
                 
                 if(in_array($aClient['resource'], $this->aRead))
                 { 
-                    // TDO : Needs a fix
+                    // TODO : Needs a fix
+                    $sBuffer = null;
+                    $iError = 0;
                     if($aClient['protocol'] == 'p2p')
                     {
-                        $sBuffer = null;
-                        $iError = 0;
                         while(($iFlag = @socket_recv($aClient['resource'], $sTempBuffer, 1024, 0)) > 0)
                         {
                             $sBuffer .= $sTempBuffer;
@@ -102,8 +102,6 @@ class cHttpServer
                     }
                     elseif($aClient['protocol'] == 'http')
                     {
-                        $sBuffer = null;
-                        $iError = 0;
                         $iBytes = 0;
                         while(true) 
                         {
@@ -153,7 +151,9 @@ class cHttpServer
                         continue;
                     }
                     
-                    $sBuffer = trim($sBuffer);  
+                    $sBuffer = trim($sBuffer); 
+                    
+                    self::debug("Received {$sBuffer}");
                     
                     if($aClient['protocol'] == 'http')
                     {
