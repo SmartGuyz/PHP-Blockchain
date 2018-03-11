@@ -327,8 +327,9 @@ class cHttpServer
                                             $this->send(['balance' => $this->cBlockchain->getBalance($aArguments[2], $this->cBlockchain->getUnspentTxOuts())], $iKey);
                                             break;
                                         case 'supply':
+                                            $oLastBlock = $this->cBlockchain->getLastBlock();
                                             $iSupply = array_reduce($this->cBlockchain->getUnspentTxOuts(), function($iAmount, $oUnspentTxOut) { return $iAmount += $oUnspentTxOut->amount; }, 0);
-                                            $this->send(['supply' => $iSupply, 'last' => $this->cBlockchain->getLastBlock()->index], $iKey);
+                                            $this->send(['supply' => $iSupply, 'lastBlockHeight' => $oLastBlock->index, 'lastBlockHash' => $oLastBlock->hash, 'lastBlockTime' => $oLastBlock->timestamp], $iKey);
                                             break;
                                         case 'transactionPool':
                                             $this->send($this->cBlockchain->getTransactionPool(), $iKey);
