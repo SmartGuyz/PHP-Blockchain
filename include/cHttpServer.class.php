@@ -84,14 +84,14 @@ class cHttpServer
                     {
                         $iBytes = @socket_recv($aClient['resource'], $sTempBuffer, 1024, MSG_DONTWAIT);
                         
-                        $iLastError = socket_last_error($aClient['resource']);
+                        /*$iLastError = socket_last_error($aClient['resource']);
                         if($iLastError != 11 && $iLastError > 0)
                         {
                             self::debug("socket_recv error, closing connection for client {$iKey}");
                             $this->closeConnection($iKey);
                             $iError++;
                             break;
-                        }
+                        }*/
                         
                         if($iBytes === false)
                         {
