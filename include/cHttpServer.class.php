@@ -81,6 +81,7 @@ class cHttpServer
                     if($aClient['protocol'] == 'p2p')
                     {
                         $sBuffer = null;
+                        $iError = 0;
                         while(($iFlag = @socket_recv($aClient['resource'], $sTempBuffer, 1024, 0)) > 0)
                         {
                             $sBuffer .= $sTempBuffer;
