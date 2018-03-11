@@ -79,10 +79,9 @@ class cHttpServer
                 { 
                     // TODO : Needs a fix
                     $sBuffer = null;
-                    $iError = 0;
                     if($aClient['protocol'] == 'p2p')
                     {
-                        while(($iFlag = @socket_recv($aClient['resource'], $sTempBuffer, 1024, 0)) > 0)
+                        while(($iFlag = socket_recv($aClient['resource'], $sTempBuffer, 1024, 0)) > 0)
                         {
                             $sBuffer .= $sTempBuffer;
                         }
@@ -103,6 +102,7 @@ class cHttpServer
                     elseif($aClient['protocol'] == 'http')
                     {
                         $iBytes = 0;
+                        $iError = 0;
                         while(true) 
                         {
                             $iBytes = @socket_recv($aClient['resource'], $sTempBuffer, 1024, MSG_DONTWAIT);
@@ -137,13 +137,13 @@ class cHttpServer
                             $sBuffer .= $sTempBuffer;
                             $iBytes += $iBytes;
                         }
+                        
+                        if($iError > 0)
+                        {
+                            continue;
+                        }
                     }
 
-                    if($iError > 0)
-                    {
-                        continue;
-                    }
-                    
                     if(empty($sBuffer) OR $sBuffer == '' OR $sBuffer == null)
                     {
                         self::debug("Closing connection for key {$iKey}");
@@ -153,7 +153,7 @@ class cHttpServer
                     
                     $sBuffer = trim($sBuffer); 
                     
-                    self::debug("Received {$sBuffer}");
+                    //self::debug("Received {$sBuffer}");
                     
                     if($aClient['protocol'] == 'http')
                     {
