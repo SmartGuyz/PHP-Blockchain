@@ -285,6 +285,7 @@ class cHttpServer
                                             break;
                                         case 'peers':      // Return all peers on the P2P server
                                             $aPeersKeys = preg_grep("/p2p/i", array_column($this->cBlockchain->aClientsInfo, 'protocol'));
+                                            print_r($aPeersKeys);
                                             if($aPeersKeys !== false && !empty($aPeersKeys) && count($aPeersKeys) > 0)
                                             {
                                                 foreach($aPeersKeys AS $iTempClient => $aTempClient)
