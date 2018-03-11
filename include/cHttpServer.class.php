@@ -31,6 +31,9 @@ class cHttpServer
         
         while(true)
         {
+            // Reset array keys for client array
+            $this->cBlockchain->aClientsInfo = array_values($this->cBlockchain->aClientsInfo);
+            
             $this->aRead = [];
             $this->aRead = array_column($this->cBlockchain->aClientsInfo, 'resource');
             

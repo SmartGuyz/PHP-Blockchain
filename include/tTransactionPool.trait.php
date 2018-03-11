@@ -12,7 +12,7 @@ trait tTransactionPool
         
         if(!$this->isValidTxForPool($oTx, $this->aTransactionPool))
         {
-            throw new Exception('Trying to add invalid tx to pool (isValidTxForPool)');
+            throw new Exception('txIn already found in the txPool');
         }
         
         self::debug("adding to txPool: ".json_encode($oTx));
