@@ -287,9 +287,11 @@ class cHttpServer
                                             }
                                             break;
                                         case 'peers':      // Return all peers on the P2P server
-                                            $aPeers = array_filter($this->cBlockchain->aClientsInfo, function($aClient) { return $aClient['protocol'] === 'p2p' ?? false; });
-                                            $this->send(((!isset($aPeers) OR count($aPeers) == 0) ? [] : $aPeers), $iKey);
-                                            unset($aTemp);
+                                            $aPeers = array_filter($this->cBlockchain->aClientsInfo, function($aClient) { return $aClient['protocol'] === 'p2p' ?? false; }); // Get all clients that are P2P (nodes)
+                                            $aPeers = array_map(function($aPeer) { unset($aPeer['resource']); return $aPeer; }, $aPeers); // Unset resource in new array (json cannot encode a resource)
+                                            $aPeers = array_values($aPeers); // Reset array keys 0,1,2...
+                                            
+                                            $this->send($aPeers, $iKey);
                                             break;
                                         case 'address':
                                             if(!isset($aArguments[2]))
