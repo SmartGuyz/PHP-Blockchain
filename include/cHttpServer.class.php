@@ -292,7 +292,7 @@ class cHttpServer
                                             {
                                                 foreach($aPeersKeys AS $aTempClient)
                                                 {
-                                                    $aTemp[] = "{$aTempClient['ipaddr']}:{$aTempClient['port']}";
+                                                    $aTemp[] = $aTempClient;
                                                 }
                                             }
                                             $this->send(((!isset($aTemp) OR count($aTemp) == 0) ? [] : $aTemp), $iKey);
