@@ -287,14 +287,13 @@ class cHttpServer
                                             }
                                             break;
                                         case 'peers':      // Return all peers on the P2P server
-                                            $aPeersKeys = preg_grep("/p2p/i", array_column($this->cBlockchain->aClientsInfo, 'protocol'));
-                                            print_r($aPeersKeys);
-                                            print_r($this->cBlockchain->aClientsInfo);
+                                            
+                                            $aPeersKeys = array_filter($this->cBlockchain->aClientsInfo, function($aClient) { return $aClient['protocol'] === 'p2p' ?? false; });
                                             if($aPeersKeys !== false && !empty($aPeersKeys) && count($aPeersKeys) > 0)
                                             {
-                                                foreach($aPeersKeys AS $iTempClient => $aTempClient)
+                                                foreach($aPeersKeys AS $aTempClient)
                                                 {
-                                                    $aTemp[] = "{$this->cBlockchain->aClientsInfo[$iTempClient]['ipaddr']}:{$this->cBlockchain->aClientsInfo[$iTempClient]['port']}";
+                                                    $aTemp[] = "{$aTempClient['ipaddr']}:{$aTempClient['port']}";
                                                 }
                                             }
                                             $this->send(((!isset($aTemp) OR count($aTemp) == 0) ? ['error' => 'No peers found'] : $aTemp), $iKey);
@@ -389,7 +388,7 @@ class cHttpServer
                                                     
                                                     if(empty($sAddress))
                                                     {
-                                                        throw new Exception("invalid address ({$oBody->data->address})");
+                                                        throw new Exception("invalid address");
                                                     }
                                                     
                                                     $sResponse = $this->cBlockchain->generatenextBlockWithTransaction($sAddress, $iAmount, $oData);
