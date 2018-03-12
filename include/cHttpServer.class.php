@@ -410,7 +410,7 @@ class cHttpServer
                                                     
                                                     if(empty($sAddress))
                                                     {
-                                                        throw new Exception("invalid address ({$oBody->data->address})");
+                                                        throw new Exception("invalid address");
                                                     }
                                                     
                                                     $sResponse = $this->cBlockchain->sendTransaction($sAddress, $iAmount, $oData);
