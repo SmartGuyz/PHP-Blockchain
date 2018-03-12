@@ -287,7 +287,6 @@ class cHttpServer
                                             }
                                             break;
                                         case 'peers':      // Return all peers on the P2P server
-                                            
                                             $aPeersKeys = array_filter($this->cBlockchain->aClientsInfo, function($aClient) { return $aClient['protocol'] === 'p2p' ?? false; });
                                             if($aPeersKeys !== false && !empty($aPeersKeys) && count($aPeersKeys) > 0)
                                             {
@@ -296,8 +295,7 @@ class cHttpServer
                                                     $aTemp[] = "{$aTempClient['ipaddr']}:{$aTempClient['port']}";
                                                 }
                                             }
-                                            $this->send(((!isset($aTemp) OR count($aTemp) == 0) ? ['error' => 'No peers found'] : $aTemp), $iKey);
-                                            
+                                            $this->send(((!isset($aTemp) OR count($aTemp) == 0) ? [] : $aTemp), $iKey);
                                             unset($aTemp);
                                             break;
                                         case 'address':
