@@ -65,7 +65,7 @@ class cHttpServer
                         
                         self::debug("Incoming connection from {$sClientIP}:{$sClientPort} ({$aValue['name']})");
 
-                        $this->cBlockchain->aClientsInfo[] = ['resource' => $rMsgSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => $aValue['name']];
+                        $this->cBlockchain->aClientsInfo[] = ['resource' => $rMsgSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => $aValue['name'], 'time' => time()];
                     }
                 }
             }
@@ -326,7 +326,7 @@ class cHttpServer
                                         case 'supply':
                                             $oLastBlock = $this->cBlockchain->getLastBlock();
                                             $iSupply = array_reduce($this->cBlockchain->getUnspentTxOuts(), function($iAmount, $oUnspentTxOut) { return $iAmount += $oUnspentTxOut->amount; }, 0);
-                                            $this->send(['supply' => $iSupply, 'lastBlockHeight' => $oLastBlock->index, 'lastBlockHash' => $oLastBlock->hash, 'lastBlockTime' => $oLastBlock->timestamp], $iKey);
+                                            $this->send(['supply' => $iSupply, 'lastBlock' => $oLastBlock], $iKey);
                                             break;
                                         case 'transactionPool':
                                             $this->send($this->cBlockchain->getTransactionPool(), $iKey);
