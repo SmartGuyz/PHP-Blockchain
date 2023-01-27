@@ -18,10 +18,10 @@ abstract class cP2PServer
         QUERY_TRANSACTION_POOL = 3,
         RESPONSE_TRANSACTION_POOL = 4;
     
-    public $aClientsInfo;
+    public array $aClientsInfo;
     
-    public function responseLatestMsg()
-    {
+    public function responseLatestMsg(): stdClass
+	{
         $oResponse = new stdClass();
         $oResponse->type = self::RESPONSE_BLOCKCHAIN;
         $oResponse->data = serialize([$this->getLastBlock()]);
@@ -29,8 +29,8 @@ abstract class cP2PServer
         return $oResponse;
     }
     
-    public function responseChainMsg()
-    {
+    public function responseChainMsg(): stdClass
+	{
         $oResponse = new stdClass();
         $oResponse->type = self::RESPONSE_BLOCKCHAIN;
         $oResponse->data = serialize($this->getBlockchain());
@@ -38,13 +38,13 @@ abstract class cP2PServer
         return $oResponse;
     }
     
-    public function broadcastLatest()
-    {
+    public function broadcastLatest(): void
+	{
         $this->broadcast($this->responseLatestMsg());
     }
     
-    public function queryChainLengthMsg()
-    {
+    public function queryChainLengthMsg(): stdClass
+	{
         $oResponse = new stdClass();
         $oResponse->type = self::QUERY_LATEST;
         $oResponse->data = null;
@@ -52,8 +52,8 @@ abstract class cP2PServer
         return $oResponse;
     }
     
-    public function queryAllMsg()
-    {
+    public function queryAllMsg(): stdClass
+	{
         $oResponse = new stdClass();
         $oResponse->type = self::QUERY_ALL;
         $oResponse->data = null;
@@ -61,8 +61,8 @@ abstract class cP2PServer
         return $oResponse;
     }
     
-    public function queryTransactionPoolMsg()
-    {
+    public function queryTransactionPoolMsg(): stdClass
+	{
         $oResponse = new stdClass();
         $oResponse->type = self::QUERY_TRANSACTION_POOL;
         $oResponse->data = null;
@@ -70,8 +70,8 @@ abstract class cP2PServer
         return $oResponse;
     }
     
-    public function responseTransactionPoolMsg()
-    {
+    public function responseTransactionPoolMsg(): stdClass
+	{
         $oResponse = new stdClass();
         $oResponse->type = self::RESPONSE_TRANSACTION_POOL;
         $oResponse->data = serialize($this->getTransactionPool());
@@ -79,9 +79,9 @@ abstract class cP2PServer
         return $oResponse;
     }
     
-    public function broadcast(stdClass $oData)
-    {
-        foreach($this->aClientsInfo AS $iKey => $aPeer)
+    public function broadcast(stdClass $oData): void
+	{
+        foreach($this->aClientsInfo AS $aPeer)
         {
             if($aPeer['protocol'] == 'p2p')
             {
@@ -91,13 +91,13 @@ abstract class cP2PServer
         }
     }
     
-    public function broadCastTransactionPool()
-    {
+    public function broadCastTransactionPool(): void
+	{
         $this->broadcast($this->responseTransactionPoolMsg());
     }
     
-    public function handleBlockchainResponse(array $aReceivedBlocks)
-    {
+    public function handleBlockchainResponse(array $aReceivedBlocks): void
+	{
         if(count($aReceivedBlocks) == 0)
         {
             self::debug("handleBlockchainResponse() -> received blockchain size of 0");
@@ -141,4 +141,3 @@ abstract class cP2PServer
         }
     }
 }
-?>

@@ -1,21 +1,31 @@
 <?php
 class cBlockchain extends cP2PServer
 {
-    private $aChain, $oGenesisBlock, $cSQLiteBC, $cEC, $aIniValues, $aTransactionPool, $aUnspentTxOuts;
+    private array
+		$aChain,
+		$aIniValues,
+		$aTransactionPool,
+		$aUnspentTxOuts;
+	private object
+		$oGenesisBlock,
+		$cSQLiteBC,
+		$cEC;
     
     const BLOCK_GENERATION_INTERVAL = 2; // Seconden
     const DIFFICULTY_ADJUSTMENT_INTERVAL = 10; // Blocks
     const COINBASE_AMOUNT = 5; // Tokens per mine transaction
     
-    use tTransaction, tWallet, tUtils;    
-    
-    /**
-     * Adding genesis block to the chain
-     */
+    use tTransaction, tWallet, tUtils;
+
+	/**
+	 * Adding genesis block to the chain
+	 *
+	 * @throws Exception
+	 */
     public function __construct(SQLite3 $oSQLiteBC, array $aIniValues)
     {
         // ECSDA
-        $this->cEC = $this->instanceECDSA('secp256k1');
+        $this->cEC = $this->instanceECDSA();
         
         // Load SQLite
         $this->cSQLiteBC = $oSQLiteBC;
@@ -24,8 +34,8 @@ class cBlockchain extends cP2PServer
         $this->aIniValues = $aIniValues;
         
         // Set defaults
-        $this->aTransactionPool = [];
-        $this->aUnspentTxOuts = [];
+		$this->aTransactionPool = [];
+		$this->aUnspentTxOuts   = [];
         
         // Init wallet
         $this->initWallet();
@@ -54,8 +64,11 @@ class cBlockchain extends cP2PServer
         
         self::debug("Local wallet address is: {$this->getPublicFromWallet()}");
     }
-    
-    private function loadBlockchain()
+
+	/**
+	 * @throws Exception
+	 */
+	private function loadBlockchain()
     {       
         $oSqlChain = $this->cSQLiteBC->query("SELECT * FROM `blockchain` ORDER BY `index`");
         $aSqlChain = $oSqlChain->fetchArray();
@@ -88,8 +101,11 @@ class cBlockchain extends cP2PServer
             self::debug("Blockchain loading done! ".count($this->aChain)." block(s) added to the chain");
         }
     }
-    
-    private function addBlockToDatabase(cBlock $oBlock)
+
+	/**
+	 * @throws Exception
+	 */
+	private function addBlockToDatabase(cBlock $oBlock)
     {
         $oSqlCheck = $this->cSQLiteBC->query("SELECT * FROM `blockchain` WHERE `index` = '{$oBlock->index}'");
         if(!$oSqlCheck->fetchArray())
@@ -97,7 +113,7 @@ class cBlockchain extends cP2PServer
             $bCheck = $this->cSQLiteBC->exec("INSERT INTO `blockchain` (`index`, `hash`, `prevHash`, `timestamp`, `data`, `difficulty`, `nonce`) VALUES ('{$oBlock->index}', '{$oBlock->hash}', '{$oBlock->prevHash}', '{$oBlock->timestamp}', '".serialize($oBlock->data)."', '{$oBlock->difficulty}', '{$oBlock->nonce}')");
             if($bCheck)
             {
-                //self::debug("Block added to the chain (DB)");
+                self::debug("Block added to the chain (DB)");
             }
             else
             {
@@ -214,19 +230,20 @@ class cBlockchain extends cP2PServer
         
         return (substr(hex2bin($sHash), 0, $iDifficulty) == str_repeat('0', $iDifficulty));
     }
-    
-    /**
-     * To find a valid block hash we must increase the nonce as until we get a valid hash. 
-     * To find a satisfying hash is completely a random process. 
-     * We must just loop through enough nonces until we find a satisfying hash
-     * 
-     * @param int $iIndex
-     * @param string $sPrevHash
-     * @param int $iTimestamp
-     * @param string $sData
-     * @param int $iDifficulty
-     * @return cBlock
-     */
+
+	/**
+	 * To find a valid block hash we must increase the nonce as until we get a valid hash.
+	 * To find a satisfying hash is completely a random process.
+	 * We must just loop through enough nonces until we find a satisfying hash
+	 *
+	 * @param int    $iIndex
+	 * @param string $sPrevHash
+	 * @param int    $iTimestamp
+	 * @param array  $aTransactions
+	 * @param int    $iDifficulty
+	 *
+	 * @return cBlock
+	 */
     private function findBlock(int $iIndex, string $sPrevHash, int $iTimestamp, array $aTransactions, int $iDifficulty): cBlock
     {
         $iNonce = 0;
@@ -240,9 +257,12 @@ class cBlockchain extends cP2PServer
             $iNonce++;
         }
     }
-    
-    public function generatenextBlockWithTransaction(string $sReceiverAddress, int $iAmount, stdClass $oDataObject)
-    {
+
+	/**
+	 * @throws Exception
+	 */
+	public function generatenextBlockWithTransaction(string $sReceiverAddress, int $iAmount, stdClass $oDataObject): ?cBlock
+	{
         if($this->isValidAddress($sReceiverAddress))
         {
             throw new Exception('invalid address');
@@ -259,18 +279,19 @@ class cBlockchain extends cP2PServer
         
         return $this->generateRawNextBlock($aBlockData);
     }
-    
-    /**
-     * Calculate a new hash (SHA256) by feeding it with dynamic information
-     * 
-     * @param int $iIndex
-     * @param string $sPrevHash
-     * @param int $iTimestamp
-     * @param string $sData
-     * @param int $iDifficulty
-     * @param int $iNonce
-     * @return string
-     */
+
+	/**
+	 * Calculate a new hash (SHA256) by feeding it with dynamic information
+	 *
+	 * @param int    $iIndex
+	 * @param string $sPrevHash
+	 * @param int    $iTimestamp
+	 * @param array  $aTransactions
+	 * @param int    $iDifficulty
+	 * @param int    $iNonce
+	 *
+	 * @return string
+	 */
     private function calculateHash(int $iIndex, string $sPrevHash, int $iTimestamp, array $aTransactions, int $iDifficulty, int $iNonce): string
     {
         return hash("sha256", $iIndex.$sPrevHash.$iTimestamp.serialize($aTransactions).$iDifficulty.$iNonce);
@@ -317,17 +338,19 @@ class cBlockchain extends cP2PServer
         }
         return true;
     }
-       
-    /**
-     * Validating the integrity of blocks
-     * 
-     * At any given time we must be able to validate if a block or a chain of blocks are valid in terms of integrity. 
-     * This is true especially when we receive new blocks from other nodes and must decide whether to accept them or not.
-     * 
-     * @param cBlock $oNewBlock
-     * @param cBlock $oPrevBlock
-     * @return bool
-     */
+
+	/**
+	 * Validating the integrity of blocks
+	 *
+	 * At any given time we must be able to validate if a block or a chain of blocks are valid in terms of integrity.
+	 * This is true especially when we receive new blocks from other nodes and must decide whether to accept them or not.
+	 *
+	 * @param cBlock $oNewBlock
+	 * @param cBlock $oPrevBlock
+	 *
+	 * @return bool
+	 * @throws Exception
+	 */
     private function isValidNewBlock(cBlock $oNewBlock, cBlock $oPrevBlock): bool
     {
         if(!$this->isValidBlockStructure($oNewBlock))
@@ -357,14 +380,16 @@ class cBlockchain extends cP2PServer
         }
         return true;
     }
-    
-    /**
-     * We first check that the first block in the chain matches with the genesis block
-     * After that we check the rest of the blocks
-     * 
-     * @param array $aChain
-     * @return bool
-     */
+
+	/**
+	 * We first check that the first block in the chain matches with the genesis block
+	 * After that we check the rest of the blocks
+	 *
+	 * @param array $aBlockchainToValidate
+	 *
+	 * @return array|null
+	 * @throws Exception
+	 */
     private function isValidChain(array $aBlockchainToValidate): ?array
     {
         // Anonymous function to quickly check the genesis block
@@ -413,11 +438,11 @@ class cBlockchain extends cP2PServer
      */
     private function isValidTimestamp(cBlock $oNewBlock, cBlock $oPrevBlock): bool
     {
-        return (((($oPrevBlock->timestamp - 60) < $oNewBlock->timestamp) && ($oNewBlock->timestamp - 60) < $this->getCurrentTimestamp()) ? true : false);
+        return (($oPrevBlock->timestamp - 60) < $oNewBlock->timestamp) && ($oNewBlock->timestamp - 60) < $this->getCurrentTimestamp();
     }
 
-    private function getCurrentTimestamp()
-    {
+    private function getCurrentTimestamp(): int
+	{
         return time();
     }
     
@@ -450,7 +475,7 @@ class cBlockchain extends cP2PServer
     private function hashMatchesBlockContent(cBlock $oBlock): bool
     {
         $sHash = $this->calculateHashForBlock($oBlock);
-        return (($sHash === $oBlock->hash) ? true : false);
+        return $sHash === $oBlock->hash;
     }
     
     /**
@@ -468,14 +493,16 @@ class cBlockchain extends cP2PServer
         }
         return $iTotal;
     }
-    
-    /**
-     * Received blockchain is valid. Replacing current blockchain with received blockchain
-     * 
-     * Nakamoto consensus
-     * 
-     * @param array $aNewBlocks
-     */
+
+	/**
+	 * Received blockchain is valid. Replacing current blockchain with received blockchain
+	 *
+	 * Nakamoto consensus
+	 *
+	 * @param array $aNewBlocks
+	 *
+	 * @throws Exception
+	 */
     public function replaceChain(array $aNewBlocks): void
     {
         $aUnspentTxOuts = $this->isValidChain($aNewBlocks);
@@ -508,30 +535,36 @@ class cBlockchain extends cP2PServer
             self::debug("Received blockchain invalid");
         }
     }
-    
-    public function sendTransaction(string $sAddress, int $iAmount, stdClass $oDataObject)
-    {
+
+	/**
+	 * @throws Exception
+	 */
+	public function sendTransaction(string $sAddress, int $iAmount, stdClass $oDataObject): cTransaction
+	{
         $oTx = $this->createTransaction($sAddress, $iAmount, $oDataObject, $this->getPrivateFromWallet(), $this->getUnspentTxOuts(), $this->getTransactionPool());
         $this->addToTransactionPool($oTx, $this->getUnspentTxOuts());
         $this->broadCastTransactionPool();
         return $oTx;
     }
-    
-    /**
-     * Generate next block in the chain and add it
-     * 
-     * @param string $sBlockData
-     * @return cBlock
-     */
+
+	/**
+	 * Generate next block in the chain and add it
+	 *
+	 * @return cBlock|null
+	 * @throws Exception
+	 */
     public function generateNextBlock(): ?cBlock
     {
         $oCoinbaseTx = $this->getCoinbaseTransaction($this->getPublicFromWallet(), $this->getLastBlock()->index + 1);
         $aBlockData = array_merge([$oCoinbaseTx], $this->getTransactionPool());
         return $this->generateRawNextBlock($aBlockData);
     }
-    
-    private function generateRawNextBlock(array $aBlockData)
-    {
+
+	/**
+	 * @throws Exception
+	 */
+	private function generateRawNextBlock(array $aBlockData): ?cBlock
+	{
         $oPrevBlock = $this->getLastBlock();
         $iDifficulty = $this->getDifficulty($this->getBlockchain());
         $iNextIndex = ($oPrevBlock->index + 1);
@@ -547,12 +580,15 @@ class cBlockchain extends cP2PServer
         }
         return null;
     }
-    
-    /**
-     * Add block to the chain
-     * 
-     * @param cBlock $oNewBlock
-     */
+
+	/**
+	 * Add block to the chain
+	 *
+	 * @param cBlock $oNewBlock
+	 *
+	 * @return bool
+	 * @throws Exception
+	 */
     public function addBlockToChain(cBlock $oNewBlock): bool
     {
         if($this->isValidNewBlock($oNewBlock, $this->getLastBlock()))
@@ -566,7 +602,7 @@ class cBlockchain extends cP2PServer
             else
             {
                 // Push to blockchain array
-                array_push($this->aChain, $oNewBlock);
+                $this->aChain[] = $oNewBlock;
                 
                 $this->setUnspentTxOuts($aRetVal);
                 $this->updateTransactionPool($this->aUnspentTxOuts);
@@ -580,15 +616,17 @@ class cBlockchain extends cP2PServer
         
         return false;
     }
-    
-    public function handleReceivedTransaction(cTransaction $oTransaction): void
+
+	/**
+	 * @throws Exception
+	 */
+	public function handleReceivedTransaction(cTransaction $oTransaction): void
     {
         $this->addToTransactionPool($oTransaction, $this->getUnspentTxOuts());
     }
     
-    public function getMyUnspentTransactionOutputs()
-    {
+    public function getMyUnspentTransactionOutputs(): array
+	{
         return $this->findUnspentTxOuts($this->getPublicFromWallet(), $this->getUnspentTxOuts());
     }
 }
-?>

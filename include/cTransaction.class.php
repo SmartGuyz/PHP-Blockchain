@@ -4,21 +4,20 @@ class cTransaction
     /**
      * @var string
      */
-    public $id;
+    public string $id;
     
     /**
      * @var int
      */
-    public $timestamp;
+    public int $timestamp;
        
     /**
      * @var cTxIn[]
      */
-    public $txIns = [];
+    public array $txIns = [];
     
     /**
      * @var cTxOut[]
      */
-    public $txOuts = [];
+    public array $txOuts = [];
 }
-?>

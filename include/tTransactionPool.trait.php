@@ -3,7 +3,10 @@ use Underscore\Underscore as _;
 
 trait tTransactionPool
 {
-    private function addToTransactionPool(cTransaction $oTx, array $aUnspentTxOut): void
+	/**
+	 * @throws Exception
+	 */
+	private function addToTransactionPool(cTransaction $oTx, array $aUnspentTxOut): void
     {
         if(!$this->validateTransaction($oTx, $aUnspentTxOut))
         {
@@ -16,7 +19,7 @@ trait tTransactionPool
         }
         
         self::debug("adding to txPool: ".json_encode($oTx));
-        array_push($this->aTransactionPool, $oTx);
+        $this->aTransactionPool[] = $oTx;
     }
     
     private function hasTxIn(cTxIn $oTxIn, array $aUnspentTxOuts): bool
@@ -24,9 +27,12 @@ trait tTransactionPool
         $oFoundTxIn = _::find($aUnspentTxOuts, function(cUnspentTxOut $oUTxO) use ($oTxIn) { return ($oUTxO->txOutId === $oTxIn->txOutId && $oUTxO->txOutIndex === $oTxIn->txOutIndex); });
         return ($oFoundTxIn !== null);
     }
-    
-    private function updateTransactionPool(array $aUnspentTxOuts)
-    {
+
+	/**
+	 * @throws Exception
+	 */
+	private function updateTransactionPool(array $aUnspentTxOuts): void
+	{
         $aInvalidTxs = [];
         foreach($this->aTransactionPool AS $oTx)
         {
@@ -34,7 +40,7 @@ trait tTransactionPool
             {
                 if(!$this->hasTxIn($oTxIn, $aUnspentTxOuts))
                 {
-                    array_push($aInvalidTxs, $oTx);
+                    $aInvalidTxs[] = $oTx;
                     break;
                 }
             }
@@ -62,17 +68,23 @@ trait tTransactionPool
         $oArrayObject = new ArrayObject($this->aUnspentTxOuts);
         return $oArrayObject->getArrayCopy();
     }
-    
-    public function replaceTransactionPool(array $aTransactionPool)
-    {
+
+	/**
+	 * @throws Exception
+	 */
+	public function replaceTransactionPool(array $aTransactionPool): void
+	{
         if(gettype($aTransactionPool) === "array")
         {
             self::debug("Replacing transactionPool");
             $this->aTransactionPool = $aTransactionPool;
         }
     }
-    
-    public function setUnspentTxOuts(array $aNewUnspentTxOut): void
+
+	/**
+	 * @throws Exception
+	 */
+	public function setUnspentTxOuts(array $aNewUnspentTxOut): void
     {
         if(gettype($aNewUnspentTxOut) === "array")
         {
@@ -81,9 +93,8 @@ trait tTransactionPool
         }
     }
     
-    private function isValidTxForPool(cTransaction $oTransaction, array $aTransactionPool)
-    {
-        return (bool)array_reduce(array_map(function(cTransaction $oTransactionPool) use ($oTransaction) { return (($oTransactionPool->id == $oTransaction->id) ? false : true); }, $aTransactionPool), function($a, $b) { return $a && $b; }, true);
+    private function isValidTxForPool(cTransaction $oTransaction, array $aTransactionPool): bool
+	{
+        return array_reduce(array_map(function(cTransaction $oTransactionPool) use ($oTransaction) { return !(($oTransactionPool->id == $oTransaction->id)); }, $aTransactionPool), function($a, $b) { return $a && $b; }, true);
     }
 }
-?>

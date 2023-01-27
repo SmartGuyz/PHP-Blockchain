@@ -4,8 +4,11 @@ use Underscore\Underscore as _;
 trait tWallet
 {
     private $rWalletFile;
-    
-    private function initWallet(): void
+
+	/**
+	 * @throws Exception
+	 */
+	private function initWallet(): void
     {
         // Let's not overwrite an existing private key
         if(file_exists($this->aIniValues['database']['datafile_wallet']))
@@ -14,7 +17,7 @@ trait tWallet
         }
         
         $sNewPrivateKey = $this->generatePrivateKey();
-        file_put_contents($this->aIniValues['database']['datafile_wallet'], $sNewPrivateKey, LOCK_EX);
+        file_put_contents(__DIR__."/{$this->aIniValues['database']['datafile_wallet']}", $sNewPrivateKey, LOCK_EX);
         
         self::debug("new wallet with private key created to: {$this->aIniValues['database']['datafile_wallet']}");
     }
@@ -29,7 +32,7 @@ trait tWallet
     
     private function getPrivateFromWallet(): string
     {
-        $sBuffer = file_get_contents($this->aIniValues['database']['datafile_wallet']);
+        $sBuffer = file_get_contents(__DIR__."/{$this->aIniValues['database']['datafile_wallet']}");
         return (string)$sBuffer;
     }
     
@@ -40,30 +43,33 @@ trait tWallet
         return $oKey->getPublic(false, 'hex');
     }
     
-    public function getAccountBalance()
-    {
+    public function getAccountBalance(): int
+	{
         return $this->getBalance($this->getPublicFromWallet(), $this->getUnspentTxOuts());
     }
     
     public function getBalance(string $sAddress, array $aUnspentTxOut): int
     {
-        return array_reduce($this->findUnspentTxOuts($sAddress, $aUnspentTxOut), function($iAmount, $oUnspentTxOut) { return $iAmount += $oUnspentTxOut->amount; }, 0);
+        return array_reduce($this->findUnspentTxOuts($sAddress, $aUnspentTxOut), function($iAmount, $oUnspentTxOut) { return $iAmount + $oUnspentTxOut->amount; }, 0);
     }
     
-    private function findUnspentTxOuts(string $sOwnerAddress, array $aUnspentTxOut)
-    {
+    private function findUnspentTxOuts(string $sOwnerAddress, array $aUnspentTxOut): array
+	{
         return array_filter($aUnspentTxOut, function($oUnspentTxOut) use($sOwnerAddress) { return ($oUnspentTxOut->address == $sOwnerAddress); });
     }
-    
-    private function findTxOutsAmount(int $iAmount, array $aMyUnspentTxOuts)
-    {
+
+	/**
+	 * @throws Exception
+	 */
+	private function findTxOutsAmount(int $iAmount, array $aMyUnspentTxOuts): array
+	{
         $iCurrentAmount = 0;
         $aIncludedUnspentTxOuts = [];
         
         foreach($aMyUnspentTxOuts AS $oMyUnpspentTxOut)
         {
-            array_push($aIncludedUnspentTxOuts, $oMyUnpspentTxOut);
-            $iCurrentAmount += $oMyUnpspentTxOut->amount;
+            $aIncludedUnspentTxOuts[] = $oMyUnpspentTxOut;
+            $iCurrentAmount           += $oMyUnpspentTxOut->amount;
             if($iCurrentAmount >= $iAmount)
             {
                 $iLeftOverAmount = $iCurrentAmount - $iAmount;
@@ -73,8 +79,8 @@ trait tWallet
         throw new Exception("Cannot create transaction from the available unspent transaction outputs. Required amount: {$iAmount}. Available unspentTxOuts: ".json_encode($aMyUnspentTxOuts));
     }
     
-    private function createTxOuts(string $sReceiverAddress, string $sMyAddress, int $iAmount, int $iLeftOverAmount, stdClass $oDataObject)
-    {
+    private function createTxOuts(string $sReceiverAddress, string $sMyAddress, int $iAmount, int $iLeftOverAmount, stdClass $oDataObject): array
+	{
         $oTxOut1 = new cTxOut($sReceiverAddress, $iAmount, $oDataObject);
         if($iLeftOverAmount === 0)
         {
@@ -87,11 +93,11 @@ trait tWallet
         }
     }
     
-    private function filterTxPoolTxs(array $aUnspentTxOuts, array $aTransactionPool)
-    {
+    private function filterTxPoolTxs(array $aUnspentTxOuts, array $aTransactionPool): array
+	{
         $aTxIns = [];
         $aTxMap = array_map(function(cTransaction $oTransaction) { return $oTransaction->txIns; }, $aTransactionPool);
-        array_walk_recursive($aTxMap, function($v, $k) use(&$aTxIns) { $aTxIns[] = $v; });
+        array_walk_recursive($aTxMap, function($v) use(&$aTxIns) { $aTxIns[] = $v; });
 
         $aRemoveable = [];
         foreach($aUnspentTxOuts AS $oUnspentOut)
@@ -102,7 +108,7 @@ trait tWallet
             }
             else
             {
-                array_push($aRemoveable, $oUnspentOut);
+                $aRemoveable[] = $oUnspentOut;
             }
         }
         
@@ -112,15 +118,19 @@ trait tWallet
         
         return array_udiff($aUnspentTxOuts, $aRemoveable, $compareObjects);
     }
-    
-    private function createTransaction(string $sReceiverAddress, int $iAmount, stdClass $oDataObject ,string $sPrivateKey, array $aUnspentTxOut, array $aTxPool): cTransaction
+
+	/**
+	 * @throws ErrorException
+	 * @throws Exception
+	 */
+	private function createTransaction(string $sReceiverAddress, int $iAmount, stdClass $oDataObject , string $sPrivateKey, array $aUnspentTxOut, array $aTxPool): cTransaction
     {
         $sMyAddress = $this->getPublicKey($sPrivateKey);
         $aMyUnspentTxOutsA = array_filter($aUnspentTxOut, function(cUnspentTxOut $oUTxO) use($sMyAddress) { return ($oUTxO->address === $sMyAddress); });
 
         $aMyUnspentTxOuts = $this->filterTxPoolTxs($aMyUnspentTxOutsA, $aTxPool);
 
-        list($aIncludedUnspentTxOuts, $iLeftOverAmount) = $this->findTxOutsAmount($iAmount, $aMyUnspentTxOuts);
+        [$aIncludedUnspentTxOuts, $iLeftOverAmount] = $this->findTxOutsAmount($iAmount, $aMyUnspentTxOuts);
         
         $toUnsignedTxIn = function(cUnspentTxOut $oUnspentTxOut) 
         {
@@ -136,10 +146,9 @@ trait tWallet
         $cTransaction->txIns = $aUnsignedTxIns;
         $cTransaction->txOuts = $this->createTxOuts($sReceiverAddress, $sMyAddress, $iAmount, $iLeftOverAmount, $oDataObject);        
         $cTransaction->timestamp = $this->getCurrentTimestamp();
-        $cTransaction->id = $sTxID = $this->getTransactionId($cTransaction);
-        $cTransaction->txIns = array_map(function(cTxIn $oTxIns, $iKey) use($cTransaction, $sPrivateKey, $sTxID, $aUnspentTxOut) { $oTxIns->signature = $this->signTxIn($cTransaction, $iKey, $sPrivateKey, $aUnspentTxOut); return $oTxIns; }, $cTransaction->txIns, array_keys($cTransaction->txIns));
+        $cTransaction->id = $this->getTransactionId($cTransaction);
+        $cTransaction->txIns = array_map(function(cTxIn $oTxIns, $iKey) use($cTransaction, $sPrivateKey, $aUnspentTxOut) { $oTxIns->signature = $this->signTxIn($cTransaction, $iKey, $sPrivateKey, $aUnspentTxOut); return $oTxIns; }, $cTransaction->txIns, array_keys($cTransaction->txIns));
         
         return $cTransaction;
     }
 }
-?>

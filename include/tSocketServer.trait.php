@@ -19,12 +19,14 @@ trait tSocketServer
         
         return $rSocket;
     }
-        
-    /**
-     * Bind IP and port for http and P2P server
-     * 
-     * @param array $aIniValues
-     */
+
+	/**
+	 * Bind IP and port for http and P2P server
+	 *
+	 * @param array $aIniValues
+	 *
+	 * @throws Exception
+	 */
     private function createSocket(array $aIniValues): void
     {
         foreach($aIniValues AS $iKey => $aValue)

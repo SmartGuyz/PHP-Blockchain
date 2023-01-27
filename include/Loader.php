@@ -5,20 +5,18 @@ if(!ini_get('display_errors'))
     ini_set('display_errors', true);
 }
 
-$sName = "PHPBC Node";
-$sLockFile = "/tmp/".strtolower($sName).".pid.lock";
+$sName     = "PHPBC Node";
+$sLockFile = "/tmp/" . strtolower($sName) . ".pid.lock";
 
 if(!extension_loaded('pcntl'))
 {
     die(" * PCNTL functions are not available on this PHP installation, {$sName} won't run without PCNTL!\n");
 }
-
-if(!extension_loaded('gmp'))
+elseif(!extension_loaded('gmp'))
 {
     die(" * GMP functions are not available on this PHP installation, {$sName} won't run without GMP!\n");
 }
-
-if(!extension_loaded('sqlite3'))
+elseif(!extension_loaded('sqlite3'))
 {
     die(" * SQLite3 functions are not available on this PHP installation, {$sName} won't run without SQLite3!\n");
 }
@@ -27,44 +25,43 @@ setlocale(LC_TIME, "nl_NL");
 date_default_timezone_set("Europe/Amsterdam");
 
 header('Content-Type: text/html; charset=UTF-8');
-header("Last-modified: ".gmstrftime("%a, %d %b %Y %T %Z",getlastmod()));
 
 $sConfig = __DIR__."/../config.ini";
-if(file_exists($sConfig))
+if(!file_exists($sConfig))
 {
-    $aIniValues = @parse_ini_file($sConfig, true);
-    
-    if(!isset($aIniValues['database']['datafile_blockchain']))
-    {
-        die("The ini file is corrupt, variable \"datafile_blockchain\" is missing in \"database\"");
-    }
-    elseif(!isset($aIniValues['database']['datafile_wallet']))
-    {
-        die("The ini file is corrupt, variable \"datafile_wallet\" is missing in \"database\"");
-    }
-    elseif(!isset($aIniValues['server']['http_address']))
-    {
-        die("The ini file is corrupt, variable \"http_address\" is missing in \"server\"");
-    }
-    elseif(!isset($aIniValues['server']['http_port']))
-    {
-        die("The ini file is corrupt, variable \"http_port\" is missing in \"server\"");
-    }
-    elseif(!isset($aIniValues['server']['p2p_address']))
-    {
-        die("The ini file is corrupt, variable \"p2p_address\" is missing in \"server\"");
-    }
-    elseif(!isset($aIniValues['server']['p2p_port']))
-    {
-        die("The ini file is corrupt, variable \"p2p_port\" is missing in \"server\"");
-    }
+	die("There is no configuration file (config.ini) in the etc directory (yet)");
 }
-else
+$aIniValues = @parse_ini_file($sConfig, true);
+
+if(!isset($aIniValues['database']['datafile_blockchain']))
 {
-    die("There is no configuration file (config.ini) in the etc directory (yet)");
+	die("The ini file is corrupt, variable \"datafile_blockchain\" is missing in \"database\"");
+}
+elseif(!isset($aIniValues['database']['datafile_wallet']))
+{
+	die("The ini file is corrupt, variable \"datafile_wallet\" is missing in \"database\"");
+}
+elseif(!isset($aIniValues['server']['http_address']))
+{
+	die("The ini file is corrupt, variable \"http_address\" is missing in \"server\"");
+}
+elseif(!isset($aIniValues['server']['http_port']))
+{
+	die("The ini file is corrupt, variable \"http_port\" is missing in \"server\"");
+}
+elseif(!isset($aIniValues['server']['p2p_address']))
+{
+	die("The ini file is corrupt, variable \"p2p_address\" is missing in \"server\"");
+}
+elseif(!isset($aIniValues['server']['p2p_port']))
+{
+	die("The ini file is corrupt, variable \"p2p_port\" is missing in \"server\"");
 }
 
-function default_autoloader($sClassName)
+/**
+ * @throws Exception
+ */
+function default_autoloader($sClassName): void
 {
 	$sPath = dirname( __FILE__ ).'/';
 	$sClassName = ltrim($sClassName, '\\');
@@ -78,19 +75,11 @@ function default_autoloader($sClassName)
 		$sClassName = substr($sClassName, $iLastNsPos + 1);
 		$sFileName = str_replace('\\', DIRECTORY_SEPARATOR, $sNamespace).DIRECTORY_SEPARATOR;
 	}
-
-    switch(substr($sClassName, 0, 1))
-    {
-        case 'c':
-        	$sFileName .= str_replace('_', DIRECTORY_SEPARATOR, $sClassName).'.class.php';
-            break;
-        case 't':
-        	$sFileName .= str_replace('_', DIRECTORY_SEPARATOR, $sClassName).'.trait.php';
-            break;
-        default:
-        	$sFileName .= str_replace('_', DIRECTORY_SEPARATOR, $sClassName).'.class.php';
-            break;
-    }
+	$sFileName .= match (substr($sClassName, 0, 1))
+	{
+		't' => str_replace('_', DIRECTORY_SEPARATOR, $sClassName) . '.trait.php',
+		default => str_replace('_', DIRECTORY_SEPARATOR, $sClassName) . '.class.php',
+	};
     
     if(@file_exists($sPath.$sFileName))
     {
@@ -105,7 +94,7 @@ function default_autoloader($sClassName)
 spl_autoload_register('default_autoloader');
 
 // Open/Create SQLite DB for the blockchain
-$cSQLiteBC = new SQLite3($aIniValues['database']['datafile_blockchain']);
+$cSQLiteBC = new SQLite3(__DIR__."/{$aIniValues['database']['datafile_blockchain']}");
 
 // Check tables
 $oSqlBC = $cSQLiteBC->query("SELECT `name` FROM `sqlite_master` WHERE `type` = 'table' AND `name` = 'blockchain'");
@@ -143,4 +132,3 @@ $aCommands[] = "status";
 // Load underscore
 require_once dirname( __FILE__ ).'/underscore/Underscore.php';
 require_once dirname( __FILE__ ).'/underscore/Bridge.php';
-?>

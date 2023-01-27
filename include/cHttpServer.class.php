@@ -5,10 +5,14 @@ class cHttpServer
 {
     use tSocketServer;
     
-    protected $aRead, $rMasterSocket;
-    private $iMaxClients, $iMaxRead, $cBlockchain, $aIniValues;
-    
-    public function __construct(array $aConfig)
+    protected array $aRead, $rMasterSocket;
+    private int $iMaxClients, $iMaxRead;
+	private array $aIniValues;
+
+	/**
+	 * @throws Exception
+	 */
+	public function __construct(array $aConfig)
     {
         $this->iMaxClients  = 1024;
         $this->iMaxRead     = 1024;
@@ -17,25 +21,26 @@ class cHttpServer
         
         $this->createSocket($this->aIniValues);
     }
-    
-    public function run(cBlockchain $oBlockchain)
-    {
-        $this->cBlockchain = $oBlockchain;
+
+	/**
+	 * @throws Exception
+	 */
+	public function run(cBlockchain $oBlockchain): void
+	{
+        $cBlockchain = $oBlockchain;
         
         foreach($this->aIniValues AS $i => $aValue)
         {
             socket_getsockname($this->rMasterSocket[$i], $sServerIP, $sServerPort);
             
-            $this->cBlockchain->aClientsInfo[] = ['resource' => $this->rMasterSocket[$i], 'ipaddr' => $sServerIP, 'port' => $sServerPort, 'protocol' => 'master'];
+            $cBlockchain->aClientsInfo[] = ['resource' => $this->rMasterSocket[$i], 'ipaddr' => $sServerIP, 'port' => $sServerPort, 'protocol' => 'master'];
         }
         
         while(true)
         {
             // Reset array keys for client array
-            $this->cBlockchain->aClientsInfo = array_values($this->cBlockchain->aClientsInfo);
-            
-            $this->aRead = [];
-            $this->aRead = array_column($this->cBlockchain->aClientsInfo, 'resource');
+			$cBlockchain->aClientsInfo = array_values($cBlockchain->aClientsInfo);
+			$this->aRead               = array_column($cBlockchain->aClientsInfo, 'resource');
             
             // Zet blocking via socket_select
             $sNull = null;
@@ -65,13 +70,13 @@ class cHttpServer
                         
                         self::debug("Incoming connection from {$sClientIP}:{$sClientPort} ({$aValue['name']})");
 
-                        $this->cBlockchain->aClientsInfo[] = ['resource' => $rMsgSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => $aValue['name'], 'time' => time()];
+                        $cBlockchain->aClientsInfo[] = ['resource' => $rMsgSocket, 'ipaddr' => $sClientIP, 'port' => $sClientPort, 'protocol' => $aValue['name'], 'time' => time()];
                     }
                 }
             }
             
             // Handle nieuwe input
-            foreach($this->cBlockchain->aClientsInfo AS $iKey => $aClient)
+            foreach($cBlockchain->aClientsInfo AS $iKey => $aClient)
             {
                 if($aClient['protocol'] == 'master')
                 {
@@ -104,7 +109,6 @@ class cHttpServer
                     }
                     elseif($aClient['protocol'] == 'http')
                     {
-                        $iBytes = 0;
                         $iError = 0;
                         while(true) 
                         {
@@ -138,7 +142,6 @@ class cHttpServer
                                 break;
                             }
                             $sBuffer .= $sTempBuffer;
-                            $iBytes += $iBytes;
                         }
                         
                         if($iError > 0)
@@ -147,7 +150,7 @@ class cHttpServer
                         }
                     }
 
-                    if(empty($sBuffer) OR $sBuffer == '' OR $sBuffer == null)
+                    if(empty($sBuffer) OR $sBuffer == '')
                     {
                         self::debug("Closing connection for key {$iKey}");
                         $this->closeConnection($iKey);
@@ -164,18 +167,16 @@ class cHttpServer
                         $aIncoming = explode("\r\n", $sBuffer);
                         
                         // Extract body from headers
-                        $bJson = false;
                         $aBody = explode("\r\n\r\n", $sBuffer);
                         $sBody = ((isset($aBody[1])) ? $aBody[1] : "");
                         if(@json_decode(trim($sBody)))
                         {
-                            $bJson = true;
                             $oBody = json_decode(trim($sBody));
                         }
                         
                         // Get page and method
-                        preg_match('~.+?(?=\sHTTP\/1\.1)~is', $aIncoming[0], $aMatches);
-                        list($sMethod, $sPage) = explode(" ", $aMatches[0]);
+                        preg_match('~.+?(?=\sHTTP/1\.1)~is', $aIncoming[0], $aMatches);
+                        [$sMethod, $sPage] = explode(" ", $aMatches[0]);
                         
                         // Explode arguments
                         $aArguments = explode("/", $sPage);
@@ -191,7 +192,7 @@ class cHttpServer
                                     switch($aArguments[1])
                                     {
                                         case 'blocks':      // Return all blocks of the chain
-                                            $this->send($this->cBlockchain->getBlockchain(), $iKey);
+                                            $this->send($cBlockchain->getBlockchain(), $iKey);
                                             break;
                                         case 'block':       // Return only the requested block (hash)
                                             if(!isset($aArguments[2]))
@@ -201,7 +202,7 @@ class cHttpServer
                                             else 
                                             {
                                                 $sHashToSearch = trim($aArguments[2]);
-                                                $aBlock = _::find($this->cBlockchain->getBlockchain(), function(cBlock $oBlock) use ($sHashToSearch) { return ($oBlock->hash === $sHashToSearch); });
+                                                $aBlock = _::find($cBlockchain->getBlockchain(), function(cBlock $oBlock) use ($sHashToSearch) { return ($oBlock->hash === $sHashToSearch); });
                                                 $this->send((($aBlock === null) ? ['error' => 'Block hash found'] : $aBlock), $iKey);
                                             }
                                             break;
@@ -217,8 +218,8 @@ class cHttpServer
                                                 $aTxs = [];
                                                 $aReturn = [];
                                                 
-                                                $aTxMap = array_map(function(cBlock $oBlock) { return $oBlock->data; }, $this->cBlockchain->getBlockchain());
-                                                array_walk_recursive($aTxMap, function($v, $k) use(&$aTxs) { $aTxs[] = $v; });
+                                                $aTxMap = array_map(function(cBlock $oBlock) { return $oBlock->data; }, $cBlockchain->getBlockchain());
+                                                array_walk_recursive($aTxMap, function($v) use(&$aTxs) { $aTxs[] = $v; });
                                                 
                                                 foreach($aTxs AS $oTransaction)
                                                 {
@@ -245,7 +246,7 @@ class cHttpServer
                                                 
                                                 $aTemp = array_unique($aReturn);
                                                 unset($aReturn);
-                                                array_walk_recursive($aTemp, function($v, $k) use(&$aReturn) { $aReturn[] = $v; });
+                                                array_walk_recursive($aTemp, function($v) use(&$aReturn) { $aReturn[] = $v; });
                                                 
                                                 $this->send(['txs' => $aReturn], $iKey);
                                             }
@@ -260,8 +261,8 @@ class cHttpServer
                                                 $sTxId = $aArguments[2];
 
                                                 $aBlocks = [];
-                                                $aTxMap = array_map(function(cBlock $oBlock) { return $oBlock->data; }, $this->cBlockchain->getBlockchain());
-                                                array_walk_recursive($aTxMap, function($v, $k) use(&$aBlocks) { $aBlocks[] = $v; });
+                                                $aTxMap = array_map(function(cBlock $oBlock) { return $oBlock->data; }, $cBlockchain->getBlockchain());
+                                                array_walk_recursive($aTxMap, function($v) use(&$aBlocks) { $aBlocks[] = $v; });
                                                 
                                                 $oTransaction = _::find($aBlocks, function($oData) use($sTxId) { return ($oData->id == $sTxId); });
                                                 if($oTransaction !== false)
@@ -277,7 +278,7 @@ class cHttpServer
                                                         }
                                                     };
                                                     
-                                                    $oFoundBlock = _::find($this->cBlockchain->getBlockchain(), $findBlock);
+                                                    $oFoundBlock = _::find($cBlockchain->getBlockchain(), $findBlock);
                                                     
                                                     $this->send(['transaction' => $oTransaction, 'block' => $oFoundBlock], $iKey);
                                                     break;
@@ -287,9 +288,9 @@ class cHttpServer
                                             }
                                             break;
                                         case 'peers':      // Return all peers on the P2P server
-                                            $aPeers = array_filter($this->cBlockchain->aClientsInfo, function($aClient) { return $aClient['protocol'] === 'p2p' ?? false; }); // Get all clients that are P2P (nodes)
-                                            $aPeers = array_map(function($aPeer) { unset($aPeer['resource']); return $aPeer; }, $aPeers); // Unset resource in new array (json cannot encode a resource)
-                                            $aPeers = array_values($aPeers); // Reset array keys 0,1,2...
+                                            $aPeers = array_filter($cBlockchain->aClientsInfo, function($aClient) { return $aClient['protocol'] === 'p2p' ?? false; }); // Get all clients that are P2P (nodes)
+                                            $aPeers = array_map(function($aPeer) { unset($aPeer['resource']); return $aPeer; }, $aPeers);                               // Unset resource in new array (json cannot encode a resource)
+                                            $aPeers = array_values($aPeers);                                                                                            // Reset array keys 0,1,2...
                                             
                                             $this->send($aPeers, $iKey);
                                             break;
@@ -301,14 +302,14 @@ class cHttpServer
                                             
                                             $sAddress = $aArguments[2];
                                             
-                                            $aUnspentTxOuts = array_filter($this->cBlockchain->getUnspentTxOuts(), function(cUnspentTxOut $oUTxO) use($sAddress) { return ($oUTxO->address === $sAddress); });
+                                            $aUnspentTxOuts = array_filter($cBlockchain->getUnspentTxOuts(), function(cUnspentTxOut $oUTxO) use($sAddress) { return ($oUTxO->address === $sAddress); });
                                             $this->send(['unspentTxOuts' => $aUnspentTxOuts], $iKey);
                                             break;
                                         case 'myAddress':
-                                            $this->send(['address' => $this->cBlockchain->getPublicFromWallet()], $iKey);
+                                            $this->send(['address' => $cBlockchain->getPublicFromWallet()], $iKey);
                                             break;
                                         case 'myBalance':
-                                            $this->send(['balance' => $this->cBlockchain->getAccountBalance()], $iKey);
+                                            $this->send(['balance' => $cBlockchain->getAccountBalance()], $iKey);
                                             break;
                                         case 'balance':
                                             if(!isset($aArguments[2]))
@@ -316,21 +317,20 @@ class cHttpServer
                                                 $this->send('', $iKey, 400);
                                             }
                                             
-                                            $this->send(['balance' => $this->cBlockchain->getBalance($aArguments[2], $this->cBlockchain->getUnspentTxOuts())], $iKey);
+                                            $this->send(['balance' => $cBlockchain->getBalance($aArguments[2], $cBlockchain->getUnspentTxOuts())], $iKey);
                                             break;
                                         case 'supply':
-                                            $oLastBlock = $this->cBlockchain->getLastBlock();
-                                            $iSupply = array_reduce($this->cBlockchain->getUnspentTxOuts(), function($iAmount, $oUnspentTxOut) { return $iAmount += $oUnspentTxOut->amount; }, 0);
+                                            $oLastBlock = $cBlockchain->getLastBlock();
+                                            $iSupply = array_reduce($cBlockchain->getUnspentTxOuts(), function($iAmount, $oUnspentTxOut) { return $iAmount + $oUnspentTxOut->amount; }, 0);
                                             $this->send(['supply' => $iSupply, 'lastBlock' => $oLastBlock], $iKey);
                                             break;
                                         case 'transactionPool':
-                                            $this->send($this->cBlockchain->getTransactionPool(), $iKey);
+                                            $this->send($cBlockchain->getTransactionPool(), $iKey);
                                             break;
-                                        case 'unspentTransactionOutputs':
+										case 'myUnspentTransactionOutputs':
+										case 'unspentTransactionOutputs':
                                             break;
-                                        case 'myUnspentTransactionOutputs':
-                                            break;
-                                        default:
+										default:
                                             $this->send('', $iKey, 404);
                                             break;
                                         }
@@ -346,7 +346,7 @@ class cHttpServer
                                             case 'mineBlock':
                                                 try 
                                                 {
-                                                    $oNewBlock = $this->cBlockchain->generateNextBlock();
+                                                    $oNewBlock = $cBlockchain->generateNextBlock();
                                                     $this->send($oNewBlock, $iKey);
                                                 }
                                                 catch(Exception $e)
@@ -358,14 +358,14 @@ class cHttpServer
                                                 $rSocket = $this->connectToPeer((object)$oBody->data);
                                                 if(is_resource($rSocket))
                                                 {                                                   
-                                                    $this->cBlockchain->aClientsInfo[] = ['resource' => $rSocket, 'ipaddr' => $oBody->data->address, 'port' => $oBody->data->port, 'protocol' => 'p2p'];
+                                                    $cBlockchain->aClientsInfo[] = ['resource' => $rSocket, 'ipaddr' => $oBody->data->address, 'port' => $oBody->data->port, 'protocol' => 'p2p'];
                                                     
                                                     // Send message to the host that added the peer
                                                     $this->send(['message' => "Connected with {$oBody->data->address}:{$oBody->data->port} succesfull {$rSocket}"], $iKey);
                                                     
                                                     // Send message to the newly added peer
-                                                    end($this->cBlockchain->aClientsInfo);
-                                                    $this->sendPeers($this->cBlockchain->queryChainLengthMsg(), key($this->cBlockchain->aClientsInfo));
+                                                    end($cBlockchain->aClientsInfo);
+                                                    $this->sendPeers($cBlockchain->queryChainLengthMsg(), key($cBlockchain->aClientsInfo));
                                                 }
                                                 else
                                                 {
@@ -384,7 +384,7 @@ class cHttpServer
                                                         throw new Exception("invalid address");
                                                     }
                                                     
-                                                    $sResponse = $this->cBlockchain->generatenextBlockWithTransaction($sAddress, $iAmount, $oData);
+                                                    $sResponse = $cBlockchain->generatenextBlockWithTransaction($sAddress, $iAmount, $oData);
                                                     
                                                     $this->send([$sResponse], $iKey);
                                                 }
@@ -405,7 +405,7 @@ class cHttpServer
                                                         throw new Exception("invalid address");
                                                     }
                                                     
-                                                    $sResponse = $this->cBlockchain->sendTransaction($sAddress, $iAmount, $oData);
+                                                    $sResponse = $cBlockchain->sendTransaction($sAddress, $iAmount, $oData);
                                                     
                                                     $this->send([$sResponse], $iKey);
                                                 }
@@ -445,19 +445,19 @@ class cHttpServer
                         {
                             case cP2PServer::QUERY_LATEST:
                                 self::debug("QUERY_LATEST: Sending out responseLatestMsg()");
-                                $this->sendPeers($this->cBlockchain->responseLatestMsg(), $iKey);
+                                $this->sendPeers($cBlockchain->responseLatestMsg(), $iKey);
                                 break;
                             case cP2PServer::QUERY_ALL:
                                 self::debug("QUERY_ALL: Sending out responseChainMsg()");
-                                $this->sendPeers($this->cBlockchain->responseChainMsg(), $iKey);
+                                $this->sendPeers($cBlockchain->responseChainMsg(), $iKey);
                                 break;
                             case cP2PServer::RESPONSE_BLOCKCHAIN:
                                 self::debug("RESPONSE_BLOCKCHAIN: handleBlockchainResponse()");
-                                $this->cBlockchain->handleBlockchainResponse($oMessageData);
+                                $cBlockchain->handleBlockchainResponse($oMessageData);
                                 break;  
                             case cP2PServer::QUERY_TRANSACTION_POOL:
                                 self::debug("QUERY_TRANSACTION_POOL: responseTransactionPoolMsg()");
-                                $this->sendPeers($this->cBlockchain->responseTransactionPoolMsg(), $iKey);
+                                $this->sendPeers($cBlockchain->responseTransactionPoolMsg(), $iKey);
                                 break;
                             case cP2PServer::RESPONSE_TRANSACTION_POOL:
                                 if(!is_array($oMessageData))
@@ -470,8 +470,8 @@ class cHttpServer
                                     try
                                     {
                                         self::debug("RESPONSE_TRANSACTION_POOL: handleReceivedTransaction()");
-                                        $this->cBlockchain->handleReceivedTransaction($oTransaction);
-                                        $this->cBlockchain->broadCastTransactionPool();
+                                        $cBlockchain->handleReceivedTransaction($oTransaction);
+                                        $cBlockchain->broadCastTransactionPool();
                                     }
                                     catch(Exception $e)
                                     {
@@ -480,7 +480,7 @@ class cHttpServer
                                 }
                                 break;
                             default:
-                                $this->sendPeers('', $iKey, 404);
+                                $this->sendPeers('', $iKey);
                                 break;
                         }
                     }
@@ -493,4 +493,3 @@ class cHttpServer
         }
     }
 }
-?>

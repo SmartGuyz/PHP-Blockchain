@@ -4,23 +4,22 @@ class cTxOut
     /**
      * @var string
      */
-    public $address;
+    public string $address;
     
     /**
      * @var integer
      */
-    public $amount;
+    public int $amount;
     
     /**
      * @var object
      */
-    public $dataObject;
+    public object $dataObject;
     
-    public function __construct(string $sAddress, int $iAmount, stdClass $oDataObject)
+    public function __construct(string $sAddress, int $iAmount, object $oDataObject)
     {
-        $this->address      = (string)$sAddress;
-        $this->amount       = (int)$iAmount;
-        $this->dataObject   = (object)$oDataObject;
+        $this->address      = $sAddress;
+        $this->amount       = $iAmount;
+        $this->dataObject   = $oDataObject;
     }
 }
-?>

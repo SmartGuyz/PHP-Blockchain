@@ -9,7 +9,7 @@ ini_set('zlib.output_compression', false);
 ini_set('implicit_flush', true);
 ob_implicit_flush(true);
 
-require 'include/Loader.php';
+require_once(__DIR__."/include/Loader.php");
 
 if(!isset($_SERVER['argv'][1]) OR !in_array($_SERVER['argv'][1], $aCommands))
 {
@@ -40,12 +40,8 @@ elseif($_SERVER['argv'][1] == "start")
                 {
                     die(" * {$sName} has been started succesfully!\n");
                 }
-                else
-                {
-                    continue;
-                }
             }
-            elseif(!$aPid[$i])			// Child proccess
+            else			// Child proccess
             {	
                 // Set lockfile
                 $rHandle = fopen($sLockFile, "a");

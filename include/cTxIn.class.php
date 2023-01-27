@@ -4,16 +4,15 @@ class cTxIn
     /**
      * @var string
      */
-    public $txOutId;
+    public string $txOutId;
     
     /**
      * @var integer
      */
-    public $txOutIndex;
+    public int $txOutIndex;
     
     /**
      * @var string
      */
-    public $signature;
+    public string $signature;
 }
-?>

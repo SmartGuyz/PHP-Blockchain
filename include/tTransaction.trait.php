@@ -10,7 +10,7 @@ trait tTransaction
         $sTxInContent = array_reduce(array_map(function(cTxIn $oTxIns) { return $oTxIns->txOutId.$oTxIns->txOutIndex; }, $oTransaction->txIns), function($a, $b) { return $a.$b; }, '');
         $sTxOutContent = array_reduce(array_map(function(cTxOut $oTxOuts) { return $oTxOuts->address.$oTxOuts->amount; }, $oTransaction->txOuts), function($a, $b) { return $a.$b; }, '');
         
-        return hash('sha256', (string)$sTxInContent.(string)$sTxOutContent);
+        return hash('sha256', $sTxInContent.$sTxOutContent);
     }
     
     private function validateTxIn(cTxIn $oTxIn, cTransaction $oTransaction, array $aUnspentTxOuts): bool
@@ -58,29 +58,29 @@ trait tTransaction
         }
         
         $oKey = $this->cEC->keyFromPrivate($sPrivateKey, 'hex');
-        $sSignature = $oKey->sign($sDataToSign)->toDER('hex');
         
-        return $sSignature;
+        return $oKey->sign($sDataToSign)->toDER('hex');
     }
     
-    private function isValidAddress(string $sAddress): void
+    private function isValidAddress(string $sAddress): bool
     {
         if(strlen($sAddress) !== 130)
         {
-            throw new Exception("invalid public key length: {$sAddress}");
+            return false;
         }
         elseif(preg_match('/^[a-fA-F0-9]+$/', $sAddress) !== 1)
         {
-            throw new Exception("public key must contain only hex characters: {$sAddress}");
+			return false;
         }
-        elseif(strpos($sAddress, '04') !== 0)
+        elseif(!str_starts_with($sAddress, '04'))
         {
-            throw new Exception("public key must start with 04: {$sAddress}");
+			return false;
         }
+		return true;
     }
     
-    private function processTransactions(array $aTransactions, array $aUnspentTxOuts, int $iBlockIndex)
-    {
+    private function processTransactions(array $aTransactions, array $aUnspentTxOuts, int $iBlockIndex): ?array
+	{
         if(!$this->validateBlockTransactions($aTransactions, $aUnspentTxOuts, $iBlockIndex))
         {
             self::debug("invalid block transactions");
@@ -94,13 +94,11 @@ trait tTransaction
     {  
         $aNewUnspentTxOuts = array_reduce(array_map(function(cTransaction $oTransaction) { return array_map(function(cTxOut $oTxOut, $iKey) use($oTransaction) { return new cUnspentTxOut($oTransaction->id, $iKey, $oTxOut->address, $oTxOut->amount); }, $oTransaction->txOuts, array_keys($oTransaction->txOuts)); }, $aTransactions), function($a, $b) { return array_merge($a, $b); }, []);        
         $aConsumedTxOuts = array_map(function(cTxIn $oTxIn) { return new cUnspentTxOut($oTxIn->txOutId, $oTxIn->txOutIndex, '', 0); }, array_reduce(array_map(function(cTransaction $oTransaction) { return $oTransaction->txIns; }, $aTransactions), function($a, $b) { return array_merge($a, $b); }, []));
-        $aResultingUnspentTxOuts = array_merge(array_filter($aUnspentTxOuts, function($oUnspentTxOut) use($aConsumedTxOuts) { return !$this->findUnspentTxOut($oUnspentTxOut->txOutId, $oUnspentTxOut->txOutIndex, $aConsumedTxOuts); }), $aNewUnspentTxOuts);
-        
-        return $aResultingUnspentTxOuts;
+		return array_merge(array_filter($aUnspentTxOuts, function($oUnspentTxOut) use($aConsumedTxOuts) { return !$this->findUnspentTxOut($oUnspentTxOut->txOutId, $oUnspentTxOut->txOutIndex, $aConsumedTxOuts); }), $aNewUnspentTxOuts);
     }
     
-    private function validateBlockTransactions(array $aTransactions, array $aUnspentTxOuts, int $iBlockIndex)
-    {
+    private function validateBlockTransactions(array $aTransactions, array $aUnspentTxOuts, int $iBlockIndex): bool
+	{
         $oCoinBaseTx = $aTransactions[0];
         if(!$this->validateCoinbaseTx($oCoinBaseTx, $iBlockIndex))
         {
@@ -111,7 +109,7 @@ trait tTransaction
         // check for duplicate txIns. Each txIn can be included only once
         $aTxIns = [];
         $aTxMap = array_map(function(cTransaction $oTransaction) { return $oTransaction->txIns; }, $aTransactions);
-        array_walk_recursive($aTxMap, function($v, $k) use(&$aTxIns) { $aTxIns[] = $v; });
+        array_walk_recursive($aTxMap, function($v) use(&$aTxIns) { $aTxIns[] = $v; });
         
         if($this->hasDuplicates($aTxIns))
         {
@@ -123,22 +121,16 @@ trait tTransaction
         return array_reduce(array_map(function(cTransaction $oTransaction) use ($aUnspentTxOuts) { return $this->validateTransaction($oTransaction, $aUnspentTxOuts); }, $aTransactions), function($a, $b) { return $a && $b; }, true);
     }
     
-    private function hasDuplicates(array $aTxIns)
-    {
+    private function hasDuplicates(array $aTxIns): bool
+	{
         $aGroups = _::countBY($aTxIns, function($oTxIn) { return $oTxIn->txOutId.$oTxIn->txOutIndex; });
-        array_walk($aGroups, function(&$a, $b) { $a = (($a > 1) ? true : false); });
-        return (bool)array_reduce($aGroups, function($a, $b) { return $a && $b; }, false);
+        array_walk($aGroups, function(&$a) { $a = $a > 1; });
+        return array_reduce($aGroups, function($a, $b) { return $a && $b; }, false);
     }
     
     private function validateCoinbaseTx(cTransaction $oTransaction, int $iBlockIndex): bool
     {
-        if($oTransaction == null)
-        {
-            self::debug("the first transaction in the block must be coinbase transaction");
-            return false;
-        }
-        
-        if($this->getTransactionId($oTransaction) != $oTransaction->id)
+		if($this->getTransactionId($oTransaction) != $oTransaction->id)
         {
             self::debug("invalid coinbase tx id: {$oTransaction->id} vs {$this->getTransactionId($oTransaction)}");
             return false;
@@ -183,7 +175,7 @@ trait tTransaction
             return false;
         }
         
-        $bHasValidTxIns = (bool)array_reduce(array_map(function(cTxIn $oTxIn) use ($oTransaction, $aUnspentTxOuts) { return $this->validateTxIn($oTxIn, $oTransaction, $aUnspentTxOuts); }, $oTransaction->txIns), function($a, $b) { return $a && $b; }, true);
+        $bHasValidTxIns = array_reduce(array_map(function(cTxIn $oTxIn) use ($oTransaction, $aUnspentTxOuts) { return $this->validateTxIn($oTxIn, $oTransaction, $aUnspentTxOuts); }, $oTransaction->txIns), function($a, $b) { return $a && $b; }, true);
         if(!$bHasValidTxIns)
         {
             self::debug("Some of the txIns are invalid in tx: {$oTransaction->id}");
@@ -253,12 +245,7 @@ trait tTransaction
     
     private function isValidTxInStructure(cTxIn $oTxIn): bool
     {
-        if($oTxIn == null)
-        {
-            self::debug("txIn is null");
-            return false;
-        }
-        elseif(gettype($oTxIn->signature) !== 'string')
+        if(gettype($oTxIn->signature) !== 'string')
         {
             self::debug("invalid signature type in txIn");
             return false;
@@ -276,14 +263,9 @@ trait tTransaction
         return true;
     }
     
-    private function isValidTxOutStructure(cTxOut $oTxOut)
-    {
-        if($oTxOut == null)
-        {
-            self::debug("txIn is null");
-            return false;
-        }
-        elseif(gettype($oTxOut->address) !== 'string')
+    private function isValidTxOutStructure(cTxOut $oTxOut): bool
+	{
+        if(gettype($oTxOut->address) !== 'string')
         {
             self::debug("invalid address type in txOu");
             return false;
@@ -317,4 +299,3 @@ trait tTransaction
         return $cTransaction;
     }
 }
-?>
