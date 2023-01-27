@@ -3,6 +3,7 @@ namespace BN;
 
 use \JsonSerializable;
 use \Exception;
+use ReturnTypeWillChange;
 
 if (version_compare(PHP_VERSION, "5.6") >= 0) {
     eval('function is_gmp($x) { return $x instanceof GMP; }');
@@ -97,7 +98,7 @@ class BN implements JsonSerializable
         return gmp_intval($this->gmp);
     }
 
-    public function jsonSerialize() {
+    #[ReturnTypeWillChange] public function jsonSerialize() {
         return $this->toString(16);
     }
 

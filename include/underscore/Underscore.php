@@ -504,7 +504,7 @@ class Underscore
         static::each($list, function ($item) use ($iterator, & $max, & $result) {
             $num = $iterator($item);
             if (!isset($max) || $num > $max)
-                list($result, $max) = [$item, $num];
+                [$result, $max] = [$item, $num];
         });
             
             return $result;
@@ -535,7 +535,7 @@ class Underscore
         static::each($list, function ($item) use ($iterator, & $min, & $result) {
             $num = $iterator($item);
             if (!isset($min) || $num < $min)
-                list($result, $min) = [$item, $num];
+                [$result, $min] = [$item, $num];
         });
             
             return $result;
@@ -2172,18 +2172,16 @@ class Underscore
      * as a string as well. If the optionnal native parameter is set to true, it will only return true if object is a
      * native string.
      *
-     * @category Object Functions
-     *
      * @param mixed $object the object
      * @param bool $native optional, if true will not consider object with toString or SplString as strings
      *
      * @return bool
+     *@category Object Functions
+     *
      */
-    public static function isString($object, $native = false)
+    public static function isString(mixed $object, bool $native = false)
     {
-        return $native
-        ? is_string($object)
-        : is_string($object) || $object instanceof \SplString || method_exists($object, '__toString');
+        return $native ? is_string($object) : is_string($object) || $object instanceof \SplString || method_exists($object, '__toString');
     }
     
     /**
@@ -2371,7 +2369,7 @@ class Underscore
             case static::isInteger($object):   return static::TYPE_INTEGER;
             case static::isNaN($object):       return static::TYPE_NAN;
             case static::isFloat($object):     return static::TYPE_FLOAT;
-            case static::isString($object):    return static::TYPE_STRING;
+            //case static::isString($object):    return static::TYPE_STRING;
             case static::isArray($object):     return static::TYPE_ARRAY;
             case static::isResource($object):  return static::TYPE_RESOURCE;
             case static::isObject($object):    return $class ? get_class($object) : static::TYPE_OBJECT;
@@ -2468,7 +2466,7 @@ class Underscore
     public static function random($min, $max = null)
     {
         if ($max === null)
-            list($min, $max) = [0, $min];
+            [$min, $max] = [0, $min];
             
             return mt_rand($min, $max);
     }
@@ -2740,7 +2738,7 @@ class Underscore
             if (strpos($classname, '\\with') === false)
                 return false;
                 
-                list($namespace, $class) = str_split($classname, strrpos($classname, '\\'));
+                [$namespace, $class] = str_split($classname, strrpos($classname, '\\'));
                 $class = substr($class, 1);
                 
                 $traits = explode('\\with', $classname);

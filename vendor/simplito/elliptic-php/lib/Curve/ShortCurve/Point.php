@@ -4,6 +4,7 @@ namespace Elliptic\Curve\ShortCurve;
 
 use JsonSerializable;
 use BN\BN;
+use ReturnTypeWillChange;
 
 class Point extends \Elliptic\Curve\BaseCurve\Point implements JsonSerializable
 {
@@ -81,7 +82,7 @@ class Point extends \Elliptic\Curve\BaseCurve\Point implements JsonSerializable
     }
 
     //toJSON()
-    public function jsonSerialize()
+    #[ReturnTypeWillChange] public function jsonSerialize()
     {
         $res = array($this->x, $this->y);
 

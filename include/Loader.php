@@ -94,7 +94,15 @@ function default_autoloader($sClassName): void
 spl_autoload_register('default_autoloader');
 
 // Open/Create SQLite DB for the blockchain
-$cSQLiteBC = new SQLite3(__DIR__."/{$aIniValues['database']['datafile_blockchain']}");
+try
+{
+	//chmod(__DIR__ . "../database", 770);
+	$cSQLiteBC = new SQLite3(__DIR__ . "/../{$aIniValues['database']['datafile_blockchain']}");
+}
+catch(Exception $e)
+{
+	throw new Exception($e->getMessage()."\r\n\r".__DIR__."/{$aIniValues['database']['datafile_blockchain']}");
+}
 
 // Check tables
 $oSqlBC = $cSQLiteBC->query("SELECT `name` FROM `sqlite_master` WHERE `type` = 'table' AND `name` = 'blockchain'");

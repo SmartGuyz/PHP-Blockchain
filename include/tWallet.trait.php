@@ -17,7 +17,7 @@ trait tWallet
         }
         
         $sNewPrivateKey = $this->generatePrivateKey();
-        file_put_contents(__DIR__."/{$this->aIniValues['database']['datafile_wallet']}", $sNewPrivateKey, LOCK_EX);
+        file_put_contents(__DIR__."/../{$this->aIniValues['database']['datafile_wallet']}", $sNewPrivateKey, LOCK_EX);
         
         self::debug("new wallet with private key created to: {$this->aIniValues['database']['datafile_wallet']}");
     }
@@ -32,7 +32,7 @@ trait tWallet
     
     private function getPrivateFromWallet(): string
     {
-        $sBuffer = file_get_contents(__DIR__."/{$this->aIniValues['database']['datafile_wallet']}");
+        $sBuffer = file_get_contents(__DIR__."/../{$this->aIniValues['database']['datafile_wallet']}");
         return (string)$sBuffer;
     }
     

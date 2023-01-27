@@ -24,9 +24,16 @@ elseif($_SERVER['argv'][1] == "start")
     else
     {
         // Load and start blockchain
-        $cBlockchain = new cBlockchain($cSQLiteBC, $aIniValues);
-        
-        $aPid = [];
+		try
+		{
+			$cBlockchain = new cBlockchain($cSQLiteBC, $aIniValues);
+		}
+		catch(Exception $e)
+		{
+            throw new Exception($e->getMessage());
+		}
+
+		$aPid = [];
         for($i = 0; $i < 1; $i++)
         {
             $aPid[$i] = pcntl_fork();
@@ -51,8 +58,15 @@ elseif($_SERVER['argv'][1] == "start")
                 echo " * Forked child with pid ".posix_getpid()."\n";
                 
                 // Start server
-                (new cHttpServer($aConfig))->run($cBlockchain);
-            }
+				try
+				{
+					(new cHttpServer($aConfig))->run($cBlockchain);
+				}
+				catch(Exception $e)
+				{
+					throw new Exception($e->getMessage());
+				}
+			}
         }
     }
 }
@@ -92,4 +106,3 @@ elseif($_SERVER['argv'][1] == "status")
         die(" * {$sName} is not running right now...\n");
     }
 }
-?>
